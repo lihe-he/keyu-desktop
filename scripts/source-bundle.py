@@ -27,6 +27,8 @@ unit, desktop, soak, packaged, install = [read_json(name) for name in (
 assert unit['numFailedTests'] == 0 and unit['numPassedTests'] > 0
 assert desktop['stats']['unexpected'] == 0 and desktop['stats']['expected'] == 5
 assert soak['passed'] and packaged['passed'] and install['passed']
+public_entry = read_json('public-entry-smoke.json')
+assert public_entry['passed'] and public_entry['version'] == VERSION
 integrity = read_json('release-integrity.json')
 assert integrity['passed'] and integrity['version'] == VERSION
 assert packaged['environment']['version'] == VERSION and install['toVersion'] == VERSION
@@ -42,7 +44,7 @@ for name in ('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'electron-
              'electron.vite.config.ts', 'playwright.config.ts', 'tsconfig.json', 'vitest.config.ts',
              '.gitignore', '.gitattributes', '.npmrc', 'README.md', 'PRODUCT_PLAN.md', 'LICENSE', 'AGENTS.md'):
     files.append(ROOT / name)
-for name in ('unit-results.json', 'e2e-results.json', 'soak-result.json', 'packaged-smoke.json', 'install-smoke.json', 'release-integrity.json'):
+for name in ('unit-results.json', 'e2e-results.json', 'soak-result.json', 'packaged-smoke.json', 'install-smoke.json', 'release-integrity.json', 'public-entry-smoke.json'):
     files.append(ROOT / 'reports' / name)
 for screenshot in (ROOT / 'reports' / 'screenshots').glob('*.png'):
     if screenshot.name not in ('06-workbench.png', '06-workbench-native.png'):
@@ -74,7 +76,7 @@ manifest = {
     'tests': {'unitPassed': unit['numPassedTests'], 'desktopPassed': desktop['stats']['expected'],
               'syntheticSoakElapsedMs': soak['elapsedMs'], 'packagedSmoke': packaged['passed'],
               'developerHostInstallReinstallUninstall': install['passed'], 'upgradeFrom': install.get('fromVersion'), 'upgradeTo': install.get('toVersion'), 'crossVersionUpgradePreservesData': install.get('crossVersionUpgradePreservesData', False),
-              'cleanWindowsAcceptance': 'not-performed', 'realPlatformTwoHourAcceptance': 'not-performed'},
+              'publicEntryCheckOnly': public_entry['passed'], 'authenticatedCourseAcceptance': 'not-performed', 'cleanWindowsAcceptance': 'not-performed', 'realPlatformTwoHourAcceptance': 'not-performed'},
     'sourceFiles': len(entries), 'buildIdentityVerified': integrity['passed'], 'lockedPackages': integrity['lockedPackageCount'], 'artifacts': artifacts,
 }
 (RELEASE / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')

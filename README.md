@@ -1,6 +1,6 @@
 # 课屿 · Keyu Desktop
 
-Windows 开发预览版 0.1.2。当前应用窗口、安装包与本地数据标识仍沿用“网课助手 / CampusCourseDesktop”，以保持升级兼容。
+Windows 开发预览版 0.1.3。当前应用窗口、安装包与本地数据标识仍沿用“网课助手 / CampusCourseDesktop”，以保持升级兼容。
 
 原仓库规划完整保留在 [PRODUCT_PLAN.md](PRODUCT_PLAN.md)；它是历史规划，不是已实现功能清单。实际范围以本 README、使用说明及真实平台兼容性报告为准。
 
@@ -23,8 +23,8 @@ Windows 开发预览版 0.1.2。当前应用窗口、安装包与本地数据标
 
 项目根目录：D:/Projects/web项目/campus-course-desktop
 
-- 安装包：D:/Projects/web项目/campus-course-desktop/release/CampusCourseDesktop-Setup-0.1.2-x64.exe
-- 源码压缩包：D:/Projects/web项目/campus-course-desktop/release/CampusCourseDesktop-Source-0.1.2.zip
+- 安装包：D:/Projects/web项目/campus-course-desktop/release/CampusCourseDesktop-Setup-0.1.3-x64.exe
+- 源码压缩包：D:/Projects/web项目/campus-course-desktop/release/CampusCourseDesktop-Source-0.1.3.zip
 - 文件校验值：D:/Projects/web项目/campus-course-desktop/release/SHA256SUMS.txt
 - 免安装目录：D:/Projects/web项目/campus-course-desktop/release/win-unpacked（整个目录一起保留）
 - 用户说明：D:/Projects/web项目/campus-course-desktop/docs/使用说明.md
@@ -62,12 +62,14 @@ $env:CAMPUS_SOAK_MS='120000'
 pnpm exec playwright test --project=soak --reporter=list
 pnpm dist
 node scripts/packaged-smoke.cjs
+# 访问官方未登录入口，不自动登录；生产数据已有账号时拒绝此临时检查
+node scripts/public-entry-smoke.cjs release/win-unpacked/CampusCourseDesktop.exe
 node scripts/install-smoke.cjs
 node scripts/verify-release.cjs
 python scripts/source-bundle.py
 ```
 
-安装校验会创建专用临时安装目录，临时添加并删除测试账号备注、还原设置，然后卸载该测试安装并保留数据目录；发现已有安装会拒绝运行。升级校验可给 `install-smoke.cjs` 传入旧版安装包路径。0.1.1 已验证 0.1.0 → 0.1.1；本次验证 0.1.1 → 0.1.2；旧版安装包不嵌入新版源码 ZIP。不要对日常使用中的账号环境运行这些开发校验。
+安装校验会创建专用临时安装目录，临时添加并删除测试账号备注、还原设置，然后卸载该测试安装并保留数据目录；发现已有安装会拒绝运行。升级校验可给 `install-smoke.cjs` 传入旧版安装包路径。0.1.1 已验证 0.1.0 → 0.1.1；本次验证 0.1.2 → 0.1.3；旧版安装包不嵌入新版源码 ZIP。不要对日常使用中的账号环境运行这些开发校验。
 
 `reports/release-integrity.json` 记录依赖锁及程序文件摘要；它只证明构建文件一致，不证明真实平台或干净系统兼容。真实课程仍按兼容性报告人工验收。
 

@@ -1,0 +1,61 @@
+{
+  "kind": "real-public-entry-NOT-authenticated-course-acceptance",
+  "passed": true,
+  "startedAt": "2026-11-03T10:00:44.459Z",
+  "platforms": [
+    {
+      "platform": "chaoxing",
+      "openSucceeded": true,
+      "loginProbe": "logged-out",
+      "frames": [
+        {
+          "origin": "https://passport2.chaoxing.com",
+          "bridgeExposed": false,
+          "hasLoginText": true,
+          "nodeExposed": false,
+          "playingMedia": 0,
+          "ready": "complete",
+          "visiblePasswordInputs": 1
+        }
+      ],
+      "loadErrors": []
+    },
+    {
+      "platform": "icourse",
+      "openSucceeded": true,
+      "loginProbe": "unknown",
+      "frames": [
+        {
+          "origin": "https://www.icourse163.org",
+          "bridgeExposed": false,
+          "hasLoginText": true,
+          "nodeExposed": false,
+          "playingMedia": 0,
+          "ready": "complete",
+          "visiblePasswordInputs": 0
+        }
+      ],
+      "loadErrors": []
+    },
+    {
+      "platform": "zhihuishu",
+      "openSucceeded": true,
+      "loginProbe": "logged-out",
+      "frames": [
+        {
+          "origin": "https://login.zhihuishu.com",
+          "bridgeExposed": false,
+          "hasLoginText": true,
+          "nodeExposed": false,
+          "playingMedia": 0,
+          "ready": "complete",
+          "visiblePasswordInputs": 1
+        }
+      ],
+      "loadErrors": []
+    }
+  ],
+  "version": "0.1.3",
+  "packaged": true,
+  "finishedAt": "2026-11-03T10:01:06.486Z"
+}

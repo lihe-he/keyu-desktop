@@ -2,6 +2,8 @@ import { test, expect, _electron as electron, type ElectronApplication, type Pag
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Command, Snapshot } from '../../src/shared/contracts'
+// Defer database-backed main-process inspection to the event loop. Inspector evaluation
+// can otherwise interrupt a synchronous SQLite query and attempt to re-enter it.
 let app:ElectronApplication,page:Page,data:string
 const env=()=>{const e:NodeJS.ProcessEnv={...process.env,CAMPUS_TEST_MODE:'1',CAMPUS_USER_DATA:data};delete e.ELECTRON_RUN_AS_NODE;return Object.fromEntries(Object.entries(e).filter((pair):pair is [string,string]=>pair[1]!==undefined))}
 async function launch(){app=await electron.launch({args:['.'],env:env()});page=await app.firstWindow();await page.waitForFunction(()=>!!window.campus);return page}
@@ -28,11 +30,11 @@ test('three platform media flows, isolation, lifecycle and persisted storage',as
  await command({type:'account.open',accountId:ids[0]})
  const other=await command({type:'account.add',platform:'chaoxing',label:'同平台第二账号'})
  await command({type:'account.open',accountId:other.id})
- const cookies=await app.evaluate(async(_electron,ids)=>{const t=(globalThis as any).__campusTest;return Promise.all(ids.map(async(id:string)=>{const a=t.store.accounts().find((a:any)=>a.id===id);const ses=t.runtime.getSession(a);return {id,cookies:await ses.cookies.get({name:'fixtureAccount'})}}))},[ids[0],other.id])
+ const cookies=await app.evaluate(async(_electron,ids)=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;return Promise.all(ids.map(async(id:string)=>{const a=t.store.accounts().find((a:any)=>a.id===id);const ses=t.runtime.getSession(a);return {id,cookies:await ses.cookies.get({name:'fixtureAccount'})}}))},[ids[0],other.id])
  expect(cookies[0].cookies[0].value).toBe(ids[0]);expect(cookies[1].cookies[0].value).toBe(other.id)
- const isolation=await app.evaluate(async()=>{const t=(globalThis as any).__campusTest;const a=t.store.accounts().at(-1);return t.runtime.contentsFor(a.id).executeJavaScript('({node:typeof require,bridge:typeof window.campus})')});expect(isolation).toEqual({node:'undefined',bridge:'undefined'})
+ const isolation=await app.evaluate(async()=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;const a=t.store.accounts().at(-1);return t.runtime.contentsFor(a.id).executeJavaScript('({node:typeof require,bridge:typeof window.campus})')});expect(isolation).toEqual({node:'undefined',bridge:'undefined'})
  await command({type:'account.delete',accountId:other.id});expect((await snapshot()).accounts).toHaveLength(3)
- const kept=await app.evaluate(async(_e,id)=>{const t=(globalThis as any).__campusTest;return t.runtime.getSession(t.store.accounts().find((a:any)=>a.id===id)).cookies.get({name:'fixtureAccount'})},ids[0]);expect(kept[0].value).toBe(ids[0])
+ const kept=await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;return t.runtime.getSession(t.store.accounts().find((a:any)=>a.id===id)).cookies.get({name:'fixtureAccount'})},ids[0]);expect(kept[0].value).toBe(ids[0])
  await command({type:'settings.update',settings:{muteAll:true,reminderEnabled:true,reminderTime:'18:30'}})
  await app.close();await launch();s=await snapshot();expect(s.accounts).toHaveLength(3);expect(s.settings.muteAll).toBe(true);expect(s.tasks.filter(t=>t.status==='finished')).toHaveLength(3);expect(s.views).toHaveLength(0);expect(errors).toEqual([])
 })
@@ -58,7 +60,7 @@ await page.screenshot({path:'reports/screenshots/06-workbench.png'});const nativ
  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1080,720));await expect.poll(async()=>page.evaluate(()=>window.innerWidth)).toBeLessThan(1100);await expect.poll(async()=>{
   const host=await page.getByTestId('browser-host').boundingBox(),outline=await page.locator('#workbench-chapters').boundingBox();return !!host&&!!outline&&host.width>400&&host.x+host.width<=outline.x+2;
  }).toBe(true);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
- await expect.poll(async()=>app.evaluate(({BrowserWindow})=>{const t=(globalThis as any).__campusTest;const w=BrowserWindow.getAllWindows()[0];const active=t.store.tasks().find((t:any)=>t.status==='running');const wc=t.runtime.contentsFor(active.accountId);const child=w.contentView.children.find((v:any)=>v.webContents===wc);const b=child?.getBounds();return !!b&&b.width>400&&b.x+b.width<850})).toBe(true);
+ await expect.poll(async()=>app.evaluate(async({BrowserWindow})=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;const w=BrowserWindow.getAllWindows()[0];const active=t.store.tasks().find((t:any)=>t.status==='running');const wc=t.runtime.contentsFor(active.accountId);const child=w.contentView.children.find((v:any)=>v.webContents===wc);const b=child?.getBounds();return !!b&&b.width>400&&b.x+b.width<850})).toBe(true);
  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1340,880));
 
 
@@ -67,12 +69,12 @@ await page.screenshot({path:'reports/screenshots/06-workbench.png'});const nativ
 })
 test('login expiry pauses only one lane; sleep and abrupt exit require confirmation',async()=>{
  const first=await prepare(),second=await prepare('icourse');await command({type:'queue.start',platform:'chaoxing'});await command({type:'queue.start',platform:'icourse'});
- await app.evaluate(async(_e,id)=>{const t=(globalThis as any).__campusTest;const wc=t.runtime.contentsFor(id);const inject=()=>wc.executeJavaScript('(()=>{const el=document.createElement("input");el.type="password";document.body.prepend(el)})()');(wc as any).__testInject=inject;wc.on('dom-ready',inject);await inject()},first.a.id)
+ await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;const wc=t.runtime.contentsFor(id);const inject=()=>wc.executeJavaScript('(()=>{const el=document.createElement("input");el.type="password";document.body.prepend(el)})()');(wc as any).__testInject=inject;wc.on('dom-ready',inject);await inject()},first.a.id)
  await expect.poll(async()=>(await snapshot()).tasks.find(t=>t.id===first.t.id)?.status).toBe('attention');expect((await snapshot()).tasks.find(t=>t.id===second.t.id)?.status).toBe('running')
  await command({type:'task.resume',taskId:first.t.id});expect((await snapshot()).tasks.find(t=>t.id===first.t.id)?.status).toBe('attention')
  // Human resolves the login challenge; restoring never seeks to an old saved time.
- await app.evaluate(async(_e,id)=>{const t=(globalThis as any).__campusTest;const wc=t.runtime.contentsFor(id);wc.removeListener('dom-ready',(wc as any).__testInject);await wc.executeJavaScript('document.querySelector("input")?.remove()')},first.a.id);await command({type:'task.resume',taskId:first.t.id});
- await app.evaluate(async()=>{const t=(globalThis as any).__campusTest;t.suspend()});await expect.poll(async()=>(await snapshot()).tasks.filter(t=>t.status==='recoverable').length).toBe(2);expect((await snapshot()).views).toHaveLength(0)
+ await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;const wc=t.runtime.contentsFor(id);wc.removeListener('dom-ready',(wc as any).__testInject);await wc.executeJavaScript('document.querySelector("input")?.remove()')},first.a.id);await command({type:'task.resume',taskId:first.t.id});
+ await app.evaluate(async()=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;t.suspend()});await expect.poll(async()=>(await snapshot()).tasks.filter(t=>t.status==='recoverable').length).toBe(2);expect((await snapshot()).views).toHaveLength(0)
  await app.evaluate(async()=>{(globalThis as any).__campusTest.resume()});expect((await snapshot()).tasks.filter(t=>t.status==='running')).toHaveLength(0)
  await command({type:'task.resume',taskId:first.t.id});await app.evaluate(({app})=>app.exit(0)).catch(()=>{});await launch();const s=await snapshot();expect(s.tasks.find(t=>t.id===first.t.id)?.status).toBe('recoverable');expect(s.views).toHaveLength(0)
 })
@@ -80,9 +82,10 @@ test('rejects forbidden commands and navigation; clearing an account cascades it
  const {a,t}=await prepare();await command({type:'queue.start',platform:'chaoxing'});await command({type:'task.pause',taskId:t.id});await command({type:'account.open',accountId:a.id});
  const invalid=await page.evaluate(()=>window.campus.command({type:'execute',script:'require("fs")'} as any));expect(invalid.ok).toBe(false)
  const bad=await page.evaluate(()=>window.campus.command({type:'account.add',platform:'chaoxing',label:'x',extra:'y'} as any));expect(bad.ok).toBe(false)
- await app.evaluate(async(_e,id)=>{const t=(globalThis as any).__campusTest;await t.runtime.contentsFor(id).executeJavaScript('location.href="https://example.com/forbidden"')},a.id)
+ await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;await t.runtime.contentsFor(id).executeJavaScript('location.href="https://example.com/forbidden"')},a.id)
  await expect.poll(async()=>(await snapshot()).notices.some(n=>n.body.includes('阻止'))).toBe(true)
- const url=await app.evaluate((_e,id)=>(globalThis as any).__campusTest.runtime.contentsFor(id).getURL(),a.id);expect(url).not.toContain('example.com')
+ // Read the runtime's redacted view metadata without entering SQLite from the inspector callback.
+ const url=await app.evaluate((_e,id)=>(globalThis as any).__campusTest.runtime.info().find((v:any)=>v.accountId===id)?.url,a.id);expect(url).toContain('chaoxing.com');expect(url).not.toContain('example.com')
  const keep=await prepare('icourse');await command({type:'account.delete',accountId:a.id});let s=await snapshot();expect(s.tasks.some(task=>task.accountId===a.id)).toBe(false);expect(s.courses.some(c=>c.accountId===a.id)).toBe(false);expect(s.accounts.some(acc=>acc.id===keep.a.id)).toBe(true)
  await command({type:'task.cancel',taskId:keep.t.id});await command({type:'data.clear-history'});s=await snapshot();expect(s.tasks).toHaveLength(0);expect(s.accounts).toHaveLength(1);expect(s.notices).toHaveLength(0)
 })
@@ -94,7 +97,7 @@ test('deleting a queued account preserves another account automatic queue progre
  let s=await snapshot();expect(s.accounts.some(a=>a.id===queued.a.id)).toBe(false);expect(s.tasks.some(t=>t.id===queued.t.id)).toBe(false);expect(s.views[0].accountId).toBe(first.a.id);
  await expect.poll(async()=>(await snapshot()).tasks.find(t=>t.id===next.t.id)?.status,{timeout:35000}).toBe('running');
  s=await snapshot();expect(s.tasks.find(t=>t.id===first.t.id)?.status).toBe('finished');expect(s.views).toHaveLength(1);expect(s.views[0].accountId).toBe(next.a.id);
- const cookies=await app.evaluate(async(_e,id)=>(globalThis as any).__campusTest.runtime.contentsFor(id).session.cookies.get({name:'fixtureAccount'}),next.a.id);expect(cookies.some((c:any)=>c.value===next.a.id)).toBe(true);
+ const cookies=await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));return (globalThis as any).__campusTest.runtime.contentsFor(id).session.cookies.get({name:'fixtureAccount'})},next.a.id);expect(cookies.some((c:any)=>c.value===next.a.id)).toBe(true);
  await command({type:'account.delete',accountId:next.a.id});s=await snapshot();expect(s.views).toHaveLength(1);expect(s.views[0].accountId).toBe(last.a.id);expect(s.tasks.find(t=>t.id===last.t.id)?.status).toBe('running');expect(s.accounts.some(a=>a.id===first.a.id)).toBe(true);await command({type:'account.delete',accountId:last.a.id});expect((await snapshot()).views).toHaveLength(0);
  await expect.poll(async()=>app.evaluate(({webContents})=>webContents.getAllWebContents().length)).toBe(1)
 })

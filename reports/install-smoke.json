@@ -1,15 +1,15 @@
 {
   "kind": "developer-host-NOT-clean-Windows-acceptance",
-  "at": "2026-11-03T09:38:37.581Z",
+  "at": "2026-11-03T10:01:07.834Z",
   "passed": true,
-  "installerSha256": "4660129c737f14bf78aa695833ef9cfd1978ee5199f31b67fbe629e7b9dfe34f",
+  "installerSha256": "b458294522daf0c2c5b0b868fbc3a296ed4458bbbd6faee7a50004a1dba6bc77",
   "installed": true,
-  "fromVersion": "0.1.1",
+  "fromVersion": "0.1.2",
   "installedLaunch": true,
-  "toVersion": "0.1.2",
+  "toVersion": "0.1.3",
   "crossVersionUpgradePreservesData": true,
   "sameVersionReinstallPreservesData": true,
-  "uninstallSettlementMs": 5219,
+  "uninstallSettlementMs": 5749,
   "uninstalled": true,
   "uninstallPreservesData": true
 }

@@ -1,7 +1,7 @@
 {
   "passed": true,
-  "at": "2026-11-03T09:38:37.063Z",
-  "version": "0.1.2",
+  "at": "2026-11-03T10:00:05.378Z",
+  "version": "0.1.3",
   "lockDocuments": 2,
   "lockSha256": "830155579e55d9e0bcf32018c955bdecffc489075d8899382c121af4f4b63b84",
   "directDependencies": {
@@ -25,21 +25,21 @@
   },
   "lockedPackageCount": 438,
   "outputHashes": {
-    "out/main/index.js": "4d45cf5dcea691be19cb2156c01bf5970c0d8c73e5cdf021c69aaff1476def84",
+    "out/main/index.js": "ba1df85768dbc2880f1124fcc51e5d720454404549e70d20db3acad599009464",
     "out/preload/index.js": "57f2f6896e2811d91e6d2cdc041df4798f76b4f6d2598983efd26604d2d38df5",
     "out/preload/platform.js": "9023677da046a3b079f9c0e411b5b6939e9bbf73f3d55b08bc4c51c0aa68ecad",
-    "out/renderer/assets/index-a2dIKsyK.js": "ea059d8a455f5a107b012f91fb4b9efbfa4c3814d3e1ecbd31e6106e1e8d7c8c",
     "out/renderer/assets/index-C8k9Ntq9.css": "e30887d21c60c4510dba0f8f81806ccb3bfb3622224e15f74a03828e272e5279",
-    "out/renderer/index.html": "6b7ae9943bad382e27c491af9ed9c47a925cd62a62bf5c8875a729c87e50c1ce"
+    "out/renderer/assets/index-f7pMliMa.js": "0499800f3626567c21aeed19bbcde44f57768b9083b0eb16ed34e2a013d99563",
+    "out/renderer/index.html": "cb40c759b864eab4be8aaa36490e547bf42030c162594808cad53f074226b5d7"
   },
-  "asarSha256": "2653d371e8dfb20962b575114cdcb0427234a584615b8b767b2f72e3a22868b0",
+  "asarSha256": "6fbbba038b8303e431a5b885fa450d4850e49314b219fc714a0af40e4c9146c6",
   "nativeModules": [
     {
       "file": "resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/win32-x64.node",
       "sha256": "e21e5efd71fba66578e95b62554d9028064a80dafd7221bf8a8ef155de8d240a"
     }
   ],
-  "installerFile": "CampusCourseDesktop-Setup-0.1.2-x64.exe",
-  "installerSha256": "4660129c737f14bf78aa695833ef9cfd1978ee5199f31b67fbe629e7b9dfe34f",
+  "installerFile": "CampusCourseDesktop-Setup-0.1.3-x64.exe",
+  "installerSha256": "b458294522daf0c2c5b0b868fbc3a296ed4458bbbd6faee7a50004a1dba6bc77",
   "note": "Identity checks only; not a real-platform or clean-Windows compatibility result."
 }
