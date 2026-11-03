@@ -1,0 +1,24 @@
+import type { Session } from 'electron'
+import type { Account } from '../../shared/contracts'
+import { platformOf } from '../../shared/platforms'
+// This module is reachable only when !app.isPackaged AND CAMPUS_TEST_MODE=1.
+// No fixture accounts or courses are ever seeded in the production application.
+function wave(seconds:number):Buffer{
+ const rate=8000,length=rate*seconds*2,b=Buffer.alloc(44+length);b.write('RIFF');b.writeUInt32LE(36+length,4);b.write('WAVE',8);b.write('fmt ',12);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(rate,24);b.writeUInt32LE(rate*2,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(length,40);return b
+}
+export function setupFixtureSession(ses:Session,account:Account):void{
+ const platform=platformOf(account.platform);const audio=wave(8)
+ ses.protocol.handle('https',request=>{
+  const url=new URL(request.url)
+  if(url.pathname==='/fixture.wav'){
+   const range=request.headers.get('range');const match=range?.match(/bytes=(\d+)-(\d*)/);const start=match?Number(match[1]):0,end=match&&match[2]?Math.min(Number(match[2]),audio.length-1):audio.length-1
+   return new Response(new Uint8Array(audio.subarray(start,end+1)),{status:match?206:200,headers:{'Content-Type':'audio/wav','Accept-Ranges':'bytes','Content-Length':String(end-start+1),...(match?{'Content-Range':'bytes '+start+'-'+end+'/'+audio.length}:{})}})
+  }
+  const origin=url.origin;const coursePath=account.platform==='chaoxing'?'/mycourse/studentcourse?courseId=fixture':account.platform==='icourse'?'/learn/fixture':'/learning/videoList?courseId=fixture';const chapterClass=account.platform==='chaoxing'?'chapter_item':account.platform==='icourse'?'j-lesson':'video-item';const isCourse=url.pathname.includes('studentcourse')||url.pathname.includes('/learn/')||url.pathname.includes('videoList');const isChapter=url.searchParams.has('chapter');const ch=Number(url.searchParams.get('chapter')??0)
+  const fixedChapterUrl=(n:number)=>origin+coursePath+(coursePath.includes('?')?'&':'?')+'chapter='+n
+  const chapters=[0,1].map(n=>'<a class="'+chapterClass+'" '+(isChapter&&ch===n?'aria-current="true"':'')+' href="'+fixedChapterUrl(n)+'" data-completion="'+(isChapter&&ch===n?'incomplete':'unknown')+'">视频 '+(n+1)+' · 明确标注的测试章节</a>').join('')
+  const body=isCourse?'<h2>测试课程 · 不是真实平台课程</h2><section>'+chapters+'</section>'+(isChapter?'<video '+(process.env.CAMPUS_SOAK==='1'?'loop ':'')+'controls muted preload="auto" style="display:block;width:640px;height:320px;background:#172a34" src="/fixture.wav"></video><p>本地生成的静音媒体夹具，用于验证真实 HTML 媒体事件；不代表课程兼容。</p>':'<p>请选择章节。</p>'):'<h2>我的课程</h2><div class="course-list"><a href="'+origin+coursePath+'">测试课程 · '+platform.name+'</a></div>'
+  const html='<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>测试夹具 · '+platform.name+'</title><style>body{font:15px Segoe UI,sans-serif;padding:30px;color:#294750;background:#f5faf9}a{display:block;padding:15px;background:white;margin:10px 0;color:#188579;border:1px solid #dbeae5}aside{background:#fff2c9;padding:16px;margin-bottom:24px}section{display:flex;gap:12px}p{font-size:12px;color:#648580}</style></head><body><aside>自动化测试夹具 — 非真实平台，非真实账号</aside><a href="'+origin+'/logout">退出登录</a>'+body+'<script>document.cookie="fixtureAccount='+account.id+'; Secure; SameSite=Lax";document.querySelector("video")?.addEventListener("ended",()=>{document.querySelector("[aria-current]")?.setAttribute("data-completion","complete")})</script></body></html>'
+  return new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; media-src 'self'"}})
+ })
+}

@@ -1,0 +1,15 @@
+{
+  "kind": "developer-host-NOT-clean-Windows-acceptance",
+  "at": "2026-11-03T09:38:37.581Z",
+  "passed": true,
+  "installerSha256": "4660129c737f14bf78aa695833ef9cfd1978ee5199f31b67fbe629e7b9dfe34f",
+  "installed": true,
+  "fromVersion": "0.1.1",
+  "installedLaunch": true,
+  "toVersion": "0.1.2",
+  "crossVersionUpgradePreservesData": true,
+  "sameVersionReinstallPreservesData": true,
+  "uninstallSettlementMs": 5219,
+  "uninstalled": true,
+  "uninstallPreservesData": true
+}

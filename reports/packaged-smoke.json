@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "at": "2026-11-03T09:38:36.726Z",
+  "executablePath": "D:\\Projects\\web项目\\campus-course-desktop\\release\\win-unpacked\\CampusCourseDesktop.exe",
+  "environment": {
+    "packaged": true,
+    "userData": "%APPDATA%/CampusCourseDesktop",
+    "testHook": "undefined",
+    "version": "0.1.2"
+  },
+  "emptyProduction": true,
+  "accountRoundtrip": true,
+  "trayClose": true,
+  "fixtureOverrideRejected": true
+}

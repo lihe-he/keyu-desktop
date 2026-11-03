@@ -1,0 +1,39 @@
+appId: cn.campuscourse.desktop
+productName: 网课助手
+executableName: CampusCourseDesktop
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**/*
+  - package.json
+  - resources/icon.png
+  - resources/tray.png
+  - LICENSE
+electronDist: node_modules/electron/dist
+extraFiles:
+  - from: docs
+    to: docs
+  - from: LICENSE
+    to: LICENSE
+asar: true
+asarUnpack:
+  - "**/*.node"
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: resources/icon.ico
+  signExecutable: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false
+  artifactName: CampusCourseDesktop-Setup-${version}-${arch}.exe
+  installerLanguages: [zh_CN, en_US]
+  language: '2052'
+publish: null

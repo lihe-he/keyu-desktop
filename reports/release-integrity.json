@@ -1,0 +1,45 @@
+{
+  "passed": true,
+  "at": "2026-11-03T09:38:37.063Z",
+  "version": "0.1.2",
+  "lockDocuments": 2,
+  "lockSha256": "830155579e55d9e0bcf32018c955bdecffc489075d8899382c121af4f4b63b84",
+  "directDependencies": {
+    "better-sqlite3": "13.0.3",
+    "lucide-vue-next": "1.0.0",
+    "pinia": "4.1.0",
+    "vue": "3.5.44",
+    "zod": "4.6.7",
+    "@playwright/test": "1.64.1",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "24.10.0",
+    "@vitejs/plugin-vue": "6.0.10",
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0",
+    "electron-vite": "6.0.0",
+    "jsdom": "30.1.3",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vitest": "5.0.5",
+    "vue-tsc": "3.3.14"
+  },
+  "lockedPackageCount": 438,
+  "outputHashes": {
+    "out/main/index.js": "4d45cf5dcea691be19cb2156c01bf5970c0d8c73e5cdf021c69aaff1476def84",
+    "out/preload/index.js": "57f2f6896e2811d91e6d2cdc041df4798f76b4f6d2598983efd26604d2d38df5",
+    "out/preload/platform.js": "9023677da046a3b079f9c0e411b5b6939e9bbf73f3d55b08bc4c51c0aa68ecad",
+    "out/renderer/assets/index-a2dIKsyK.js": "ea059d8a455f5a107b012f91fb4b9efbfa4c3814d3e1ecbd31e6106e1e8d7c8c",
+    "out/renderer/assets/index-C8k9Ntq9.css": "e30887d21c60c4510dba0f8f81806ccb3bfb3622224e15f74a03828e272e5279",
+    "out/renderer/index.html": "6b7ae9943bad382e27c491af9ed9c47a925cd62a62bf5c8875a729c87e50c1ce"
+  },
+  "asarSha256": "2653d371e8dfb20962b575114cdcb0427234a584615b8b767b2f72e3a22868b0",
+  "nativeModules": [
+    {
+      "file": "resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/win32-x64.node",
+      "sha256": "e21e5efd71fba66578e95b62554d9028064a80dafd7221bf8a8ef155de8d240a"
+    }
+  ],
+  "installerFile": "CampusCourseDesktop-Setup-0.1.2-x64.exe",
+  "installerSha256": "4660129c737f14bf78aa695833ef9cfd1978ee5199f31b67fbe629e7b9dfe34f",
+  "note": "Identity checks only; not a real-platform or clean-Windows compatibility result."
+}
