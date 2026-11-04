@@ -2,6 +2,7 @@ import { test, expect, _electron as electron, type ElectronApplication, type Pag
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Command, Snapshot } from '../../src/shared/contracts'
+import { platformOf } from '../../src/shared/platforms'
 // Defer database-backed main-process inspection to the event loop. Inspector evaluation
 // can otherwise interrupt a synchronous SQLite query and attempt to re-enter it.
 let app:ElectronApplication,page:Page,data:string
@@ -80,6 +81,15 @@ test('login expiry pauses only one lane; sleep and abrupt exit require confirmat
 })
 test('rejects forbidden commands and navigation; clearing an account cascades its rows only',async()=>{
  const {a,t}=await prepare();await command({type:'queue.start',platform:'chaoxing'});await command({type:'task.pause',taskId:t.id});await command({type:'account.open',accountId:a.id});
+ // Synthetic navigation regression only: never confirms a real QR login.
+ const loginReturn=await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));const wc=(globalThis as any).__campusTest.runtime.contentsFor(id);return new URL(wc.getURL()).searchParams.get('refer')},a.id)
+ expect(loginReturn).toBe(platformOf('chaoxing').courses)
+ await app.evaluate(async(_e,{id,target})=>{await new Promise<void>(resolve=>setImmediate(resolve));const wc=(globalThis as any).__campusTest.runtime.contentsFor(id);await wc.executeJavaScript('location.href='+JSON.stringify(target))},{id:a.id,target:loginReturn})
+ await expect.poll(async()=>app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));return (globalThis as any).__campusTest.runtime.contentsFor(id).getURL()},a.id)).toBe(loginReturn)
+ expect((await snapshot()).notices.some(n=>n.body.includes('阻止'))).toBe(false)
+ await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));await (globalThis as any).__campusTest.runtime.contentsFor(id).executeJavaScript('location.href="http://i.mooc.chaoxing.com/space/index"')},a.id)
+ await expect.poll(async()=>(await snapshot()).notices.some(n=>n.body.includes('阻止'))).toBe(true)
+ await command({type:'data.clear-history'})
  const invalid=await page.evaluate(()=>window.campus.command({type:'execute',script:'require("fs")'} as any));expect(invalid.ok).toBe(false)
  const bad=await page.evaluate(()=>window.campus.command({type:'account.add',platform:'chaoxing',label:'x',extra:'y'} as any));expect(bad.ok).toBe(false)
  await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));const t=(globalThis as any).__campusTest;await t.runtime.contentsFor(id).executeJavaScript('location.href="https://example.com/forbidden"')},a.id)

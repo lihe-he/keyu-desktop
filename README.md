@@ -1,6 +1,6 @@
 # 课屿 · Keyu Desktop
 
-Windows 开发预览版 0.1.3。当前应用窗口、安装包与本地数据标识仍沿用“网课助手 / CampusCourseDesktop”，以保持升级兼容。
+Windows 开发预览版 0.1.4。当前应用窗口、安装包与本地数据标识仍沿用“网课助手 / CampusCourseDesktop”，以保持升级兼容。
 
 原仓库规划完整保留在 [PRODUCT_PLAN.md](PRODUCT_PLAN.md)；它是历史规划，不是已实现功能清单。实际范围以本 README、使用说明及真实平台兼容性报告为准。
 
@@ -8,6 +8,10 @@ Windows 开发预览版 0.1.3。当前应用窗口、安装包与本地数据标
 
 > **重要：这是可运行的开发预览版，不是已经通过三平台真实课程验收的正式版。**
 > 三个平台的候选适配器已经接入同一任务引擎，但真实账号、课程目录、播放器、切章和完成状态仍需要本机逐项验证。模拟测试不代表真实平台兼容。不要用于无人值守的重要课程任务。
+
+## 0.1.4 扫码登录修复
+
+学习通默认登录返回 HTTP 地址，被应用的 HTTPS 限制拦截；现在明确传入官方 HTTPS 课程入口。没有放开 HTTP 或修改登录凭据。官方公开页和受控导航测试通过，用户确认扫码后的端到端登录仍待复测；详情见 `docs/学习通扫码登录修复.md`。
 
 ## 已实现
 
@@ -23,10 +27,10 @@ Windows 开发预览版 0.1.3。当前应用窗口、安装包与本地数据标
 
 项目根目录：D:/Projects/web项目/campus-course-desktop
 
-- 安装包：D:/Projects/web项目/campus-course-desktop/release/CampusCourseDesktop-Setup-0.1.3-x64.exe
-- 源码压缩包：D:/Projects/web项目/campus-course-desktop/release/CampusCourseDesktop-Source-0.1.3.zip
+- 安装包：D:/Projects/web项目/campus-course-desktop/release/CampusCourseDesktop-Setup-0.1.4-x64.exe
+- 源码压缩包：D:/Projects/web项目/campus-course-desktop/release/CampusCourseDesktop-Source-0.1.4.zip
 - 文件校验值：D:/Projects/web项目/campus-course-desktop/release/SHA256SUMS.txt
-- 免安装目录：D:/Projects/web项目/campus-course-desktop/release/win-unpacked（整个目录一起保留）
+- 免安装目录：D:/Projects/web项目/campus-course-desktop/release/build-0.1.4/win-unpacked（整个目录一起保留）
 - 用户说明：D:/Projects/web项目/campus-course-desktop/docs/使用说明.md
 - 兼容性报告：D:/Projects/web项目/campus-course-desktop/docs/真实平台兼容性报告.md
 - 测试报告：D:/Projects/web项目/campus-course-desktop/docs/测试报告.md
@@ -60,16 +64,17 @@ pnpm exec playwright test --project=desktop --reporter=list,json
 # 短时合成检查；如需两小时合成检查，先移除 CAMPUS_SOAK_MS
 $env:CAMPUS_SOAK_MS='120000'
 pnpm exec playwright test --project=soak --reporter=list
-pnpm dist
-node scripts/packaged-smoke.cjs
-# 访问官方未登录入口，不自动登录；生产数据已有账号时拒绝此临时检查
-node scripts/public-entry-smoke.cjs release/win-unpacked/CampusCourseDesktop.exe
+pnpm exec electron-builder --win nsis --x64 --config.directories.output=release/build-0.1.4
+Copy-Item release/build-0.1.4/CampusCourseDesktop-Setup-0.1.4-x64.exe release/
+node scripts/packaged-smoke.cjs release/build-0.1.4/win-unpacked/CampusCourseDesktop.exe
+# 访问官方未登录入口，不自动登录；打包校验使用独立临时目录
+node scripts/public-entry-smoke.cjs release/build-0.1.4/win-unpacked/CampusCourseDesktop.exe
 node scripts/install-smoke.cjs
-node scripts/verify-release.cjs
+node scripts/verify-release.cjs release/build-0.1.4/win-unpacked
 python scripts/source-bundle.py
 ```
 
-安装校验会创建专用临时安装目录，临时添加并删除测试账号备注、还原设置，然后卸载该测试安装并保留数据目录；发现已有安装会拒绝运行。升级校验可给 `install-smoke.cjs` 传入旧版安装包路径。0.1.1 已验证 0.1.0 → 0.1.1；本次验证 0.1.2 → 0.1.3；旧版安装包不嵌入新版源码 ZIP。不要对日常使用中的账号环境运行这些开发校验。
+打包和安装校验使用专用临时账号目录，先核对隔离路径再操作，绝不使用日常登录会话。安装校验仍会创建并卸载临时安装，发现已有正式安装会拒绝运行。本次仅验证 0.1.4 安装、同版本重装与卸载；0.1.3 → 0.1.4 跨版本升级未验收。0.1.3 的历史报告验证了 0.1.2 → 0.1.3，不可替代本次结果。0.1.3 及更早版本不识别隔离校验参数，不可传给当前安装脚本作旧版升级起点。
 
 `reports/release-integrity.json` 记录依赖锁及程序文件摘要；它只证明构建文件一致，不证明真实平台或干净系统兼容。真实课程仍按兼容性报告人工验收。
 

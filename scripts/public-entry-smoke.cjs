@@ -3,6 +3,7 @@ const { _electron: electron } = require('@playwright/test');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const { verificationProfile } = require('./verification-profile.cjs');
 const root = path.resolve(__dirname, '..');
 const reportFile = path.join(root, 'reports/public-entry-smoke.json');
 const report = { kind: 'real-public-entry-NOT-authenticated-course-acceptance', passed: false, startedAt: new Date().toISOString(), platforms: [] };
@@ -14,16 +15,18 @@ const report = { kind: 'real-public-entry-NOT-authenticated-course-acceptance', 
   const packaged = process.argv[2] ? path.resolve(process.argv[2]) : null;
   if (!packaged) env.CAMPUS_USER_DATA = await fs.mkdtemp(path.join(root, '.test-data/public-entry-'));
   else delete env.CAMPUS_USER_DATA;
-  const app = await electron.launch({ ...(packaged ? { executablePath: packaged, args: [] } : { args: [root] }), env, timeout: 30000 });
+  const profile = verificationProfile();
+  const app = await electron.launch({ ...(packaged ? { executablePath: packaged, args: profile.args } : { args: [root] }), env, timeout: 30000 });
   const created = [];
   let page;
   try {
     page = await app.firstWindow(); await page.waitForFunction(() => !!window.campus);
+    if (packaged) await profile.verify(app);
     const cmd = c => page.evaluate(c => window.campus.command(c), c);
     const snapshot = () => page.evaluate(() => window.campus.snapshot());
     const before = await snapshot(); assert(before.ok && !before.data.fixtureMode);
     assert.equal(before.data.accounts.length, 0, 'Existing accounts found; refusing to mix this check with real login sessions.');
-    report.version = before.data.version; report.packaged = Boolean(packaged);
+    report.version = before.data.version; report.packaged = Boolean(packaged); report.isolatedVerification = true;
     await app.evaluate(({ app }) => {
       globalThis.__entryLoadErrors = [];
       app.on('web-contents-created', (_event, wc) => {
@@ -51,6 +54,7 @@ const report = { kind: 'real-public-entry-NOT-authenticated-course-acceptance', 
               const visible = el => {const box = el.getBoundingClientRect(), style = getComputedStyle(el); return box.width > 0 && box.height > 0 && style.display !== 'none' && style.visibility !== 'hidden'};
               const inputs = Array.from(document.querySelectorAll('input')).filter(visible);
               return {ready: document.readyState, hasLoginText: /登录|登入/.test(document.body?.innerText || ''),
+                chaoxingHttpsReturn: location.origin === 'https://passport2.chaoxing.com' ? decodeURIComponent(document.querySelector('#refer')?.getAttribute('value') || '') === 'https://i.chaoxing.com/' : null,
                 visiblePasswordInputs: inputs.filter(el => el.type === 'password').length,
                 bridgeExposed: typeof window.campus !== 'undefined', nodeExposed: typeof window.require !== 'undefined',
                 playingMedia: Array.from(document.querySelectorAll('video,audio')).filter(m => !m.paused && !m.ended).length};
@@ -68,6 +72,7 @@ const report = { kind: 'real-public-entry-NOT-authenticated-course-acceptance', 
       const removed = await cmd({ type: 'account.delete', accountId: account.id }); assert(removed.ok);
       assert(opened.ok, platform + ': entry command failed');
       assert(frames.some(frame => frame.ready === 'complete' && frame.hasLoginText), platform + ': login entry not visible');
+      if(platform === 'chaoxing') assert(frames.some(frame => frame.chaoxingHttpsReturn === true), 'Official page did not retain the configured HTTPS login return.');
       assert(frames.every(frame => !frame.bridgeExposed && !frame.nodeExposed && !frame.playingMedia), 'Entry isolation or media policy failed');
       assert(!loadErrors.some(error => error.mainFrame), platform + ': main document failed to load');
     }

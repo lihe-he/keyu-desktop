@@ -2,7 +2,15 @@ import { isPersistableCourseUrl } from '../../src/main/core/security'
 import { describe,it,expect } from 'vitest'
 import { isAllowedUrl,partitionFor,trustedSender,safeUrl,redact } from '../../src/main/core/security'
 import { commandSchema } from '../../src/shared/validation'
+import { platformOf } from '../../src/shared/platforms'
 describe('strict navigation policy',()=>{
+ it('uses an explicit HTTPS course return for the official Chaoxing QR login',()=>{
+  const platform=platformOf('chaoxing'),login=new URL(platform.home)
+  expect(login.origin+login.pathname).toBe('https://passport2.chaoxing.com/login')
+  expect(login.searchParams.get('refer')).toBe(platform.courses)
+  expect(isAllowedUrl('chaoxing',login.searchParams.get('refer')!)).toBe(true)
+  expect(isAllowedUrl('chaoxing','http://i.mooc.chaoxing.com/space/index')).toBe(false)
+ })
  it.each(['https://i.chaoxing.com/','https://passport2.chaoxing.com/login','https://foo.chaoxing.net/'])('allows actual platform hosts %s',url=>expect(isAllowedUrl('chaoxing',url)).toBe(true))
  it.each(['http://i.chaoxing.com/','https://chaoxing.com.evil.test','https://evilchaoxing.com','https://evil.test/?next=chaoxing.com','javascript:alert(1)','file:///C:/secret','https://u:p@chaoxing.com','https://chaoxing.com:8443','data:text/html,test','not a url'])('rejects unsafe navigation %s',url=>expect(isAllowedUrl('chaoxing',url)).toBe(false))
  it('rejects another platform in an existing session',()=>expect(isAllowedUrl('icourse','https://i.chaoxing.com')).toBe(false))

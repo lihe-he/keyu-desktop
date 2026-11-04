@@ -1,229 +1,660 @@
 {
   "kind": "synthetic-fixture-NOT-real-platform",
-  "startedAt": "2026-11-03T09:56:54.464Z",
-  "elapsedMs": 124104,
+  "version": "0.1.4",
+  "startedAt": "2026-11-04T01:20:06.898Z",
+  "elapsedMs": 122141,
   "passed": true,
   "samples": [
     {
-      "at": 1793699821935,
+      "at": 1793755213339,
       "stats": {
-        "playbackMs": 12539.7890625,
-        "elapsedMs": 5016.27197265625,
+        "playbackMs": 7508.301025390625,
+        "elapsedMs": 2503.64111328125,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 141024
+          "workingSetSize": 141916
         },
         {
           "type": "GPU",
-          "workingSetSize": 149288
+          "workingSetSize": 144976
         },
         {
           "type": "Utility",
-          "workingSetSize": 61064
+          "workingSetSize": 60380
         },
         {
           "type": "Tab",
-          "workingSetSize": 105044
+          "workingSetSize": 107968
         },
         {
           "type": "Tab",
-          "workingSetSize": 113820
+          "workingSetSize": 115728
         },
         {
           "type": "Utility",
-          "workingSetSize": 95892
+          "workingSetSize": 93896
         },
         {
           "type": "Tab",
-          "workingSetSize": 115792
+          "workingSetSize": 115400
         },
         {
           "type": "Tab",
-          "workingSetSize": 115952
+          "workingSetSize": 115464
         }
       ]
     },
     {
-      "at": 1793699827004,
+      "at": 1793755218370,
       "stats": {
-        "playbackMs": 20072.7890625,
-        "elapsedMs": 10039.27197265625,
+        "playbackMs": 15022.44189453125,
+        "elapsedMs": 5008.64111328125,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 141648
+          "workingSetSize": 142612
         },
         {
           "type": "GPU",
-          "workingSetSize": 149284
+          "workingSetSize": 146528
         },
         {
           "type": "Utility",
-          "workingSetSize": 61096
+          "workingSetSize": 60392
         },
         {
           "type": "Tab",
-          "workingSetSize": 104604
+          "workingSetSize": 108532
         },
         {
           "type": "Tab",
-          "workingSetSize": 114292
+          "workingSetSize": 116196
         },
         {
           "type": "Utility",
-          "workingSetSize": 95892
+          "workingSetSize": 93896
         },
         {
           "type": "Tab",
-          "workingSetSize": 116208
+          "workingSetSize": 116744
         },
         {
           "type": "Tab",
-          "workingSetSize": 116348
+          "workingSetSize": 115756
         }
       ]
     },
     {
-      "at": 1793699832065,
+      "at": 1793755223389,
       "stats": {
-        "playbackMs": 35137.238037109375,
-        "elapsedMs": 15068.27197265625,
+        "playbackMs": 30035.94189453125,
+        "elapsedMs": 10017.256103515625,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 136892
+          "workingSetSize": 137560
         },
         {
           "type": "GPU",
-          "workingSetSize": 149284
+          "workingSetSize": 148904
         },
         {
           "type": "Utility",
-          "workingSetSize": 61096
+          "workingSetSize": 60400
         },
         {
           "type": "Tab",
-          "workingSetSize": 105028
+          "workingSetSize": 108256
         },
         {
           "type": "Tab",
-          "workingSetSize": 114572
+          "workingSetSize": 116396
         },
         {
           "type": "Utility",
-          "workingSetSize": 95892
+          "workingSetSize": 93896
         },
         {
           "type": "Tab",
-          "workingSetSize": 116324
+          "workingSetSize": 116948
         },
         {
           "type": "Tab",
-          "workingSetSize": 116564
+          "workingSetSize": 117132
         }
       ]
     },
     {
-      "at": 1793699837132,
+      "at": 1793755228407,
       "stats": {
-        "playbackMs": 42654.794189453125,
-        "elapsedMs": 17580.0009765625,
+        "playbackMs": 37538.143798828125,
+        "elapsedMs": 15016.4580078125,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 137328
+          "workingSetSize": 138172
         },
         {
           "type": "GPU",
-          "workingSetSize": 149292
+          "workingSetSize": 151412
         },
         {
           "type": "Utility",
-          "workingSetSize": 61100
+          "workingSetSize": 60404
         },
         {
           "type": "Tab",
-          "workingSetSize": 105084
+          "workingSetSize": 108272
         },
         {
           "type": "Tab",
-          "workingSetSize": 114792
+          "workingSetSize": 117884
         },
         {
           "type": "Utility",
-          "workingSetSize": 95892
+          "workingSetSize": 93896
         },
         {
           "type": "Tab",
-          "workingSetSize": 116632
+          "workingSetSize": 117176
         },
         {
           "type": "Tab",
-          "workingSetSize": 116860
+          "workingSetSize": 117340
         }
       ]
     },
     {
-      "at": 1793699842182,
+      "at": 1793755233439,
       "stats": {
-        "playbackMs": 50200.794189453125,
-        "elapsedMs": 20095.0009765625,
+        "playbackMs": 52584.293701171875,
+        "elapsedMs": 20033.052001953125,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 136708
+          "workingSetSize": 138220
         },
         {
           "type": "GPU",
-          "workingSetSize": 149292
+          "workingSetSize": 152148
         },
         {
           "type": "Utility",
-          "workingSetSize": 61100
+          "workingSetSize": 60404
         },
         {
           "type": "Tab",
-          "workingSetSize": 103792
+          "workingSetSize": 107036
         },
         {
           "type": "Tab",
-          "workingSetSize": 115024
+          "workingSetSize": 118148
         },
         {
           "type": "Utility",
-          "workingSetSize": 95892
+          "workingSetSize": 93896
         },
         {
           "type": "Tab",
-          "workingSetSize": 116856
+          "workingSetSize": 117392
         },
         {
           "type": "Tab",
-          "workingSetSize": 117056
+          "workingSetSize": 117596
         }
       ]
     },
     {
-      "at": 1793699847239,
+      "at": 1793755238468,
       "stats": {
-        "playbackMs": 65247.84521484375,
-        "elapsedMs": 25117.64794921875,
+        "playbackMs": 60115.499755859375,
+        "elapsedMs": 22546.052001953125,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 135380
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152272
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60492
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 108120
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119208
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93920
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119704
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 120056
+        }
+      ]
+    },
+    {
+      "at": 1793755243494,
+      "stats": {
+        "playbackMs": 67623.46875,
+        "elapsedMs": 25049.052001953125,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 136140
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152048
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60492
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 108472
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119256
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93920
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118724
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118956
+        }
+      ]
+    },
+    {
+      "at": 1793755248515,
+      "stats": {
+        "playbackMs": 82628.87670898438,
+        "elapsedMs": 30056.052001953125,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 136820
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 151840
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60492
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 108968
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119324
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93920
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118740
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118980
+        }
+      ]
+    },
+    {
+      "at": 1793755253537,
+      "stats": {
+        "playbackMs": 90046.69262695312,
+        "elapsedMs": 32567.052001953125,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 136992
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152672
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60492
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 109120
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119464
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93920
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118896
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119060
+        }
+      ]
+    },
+    {
+      "at": 1793755258571,
+      "stats": {
+        "playbackMs": 102584.98559570312,
+        "elapsedMs": 37588.052001953125,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 137128
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152636
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60492
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 109232
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119580
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93920
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118916
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119068
+        }
+      ]
+    },
+    {
+      "at": 1793755263595,
+      "stats": {
+        "playbackMs": 112583.46655273438,
+        "elapsedMs": 42588.532958984375,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 137584
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152648
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60492
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 109492
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119620
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93920
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119044
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 119164
+        }
+      ]
+    },
+    {
+      "at": 1793755268636,
+      "stats": {
+        "playbackMs": 120117.0986328125,
+        "elapsedMs": 45100.324951171875,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 134992
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152440
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60424
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 108084
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118116
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93916
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 117412
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 117544
+        }
+      ]
+    },
+    {
+      "at": 1793755273666,
+      "stats": {
+        "playbackMs": 135207.267578125,
+        "elapsedMs": 50135.324951171875,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 134852
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152456
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60412
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 108484
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118224
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93912
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 117488
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 117568
+        }
+      ]
+    },
+    {
+      "at": 1793755278683,
+      "stats": {
+        "playbackMs": 142738.95849609375,
+        "elapsedMs": 52649.324951171875,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 134524
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152472
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60572
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 108976
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118252
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93912
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 117460
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 117680
+        }
+      ]
+    },
+    {
+      "at": 1793755283720,
+      "stats": {
+        "playbackMs": 150240.6875,
+        "elapsedMs": 55151.324951171875,
+        "todayFinished": 0
+      },
+      "webContents": 4,
+      "processes": [
+        {
+          "type": "Browser",
+          "workingSetSize": 134544
+        },
+        {
+          "type": "GPU",
+          "workingSetSize": 152468
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 60572
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 108976
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 118292
+        },
+        {
+          "type": "Utility",
+          "workingSetSize": 93912
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 117708
+        },
+        {
+          "type": "Tab",
+          "workingSetSize": 117844
+        }
+      ]
+    },
+    {
+      "at": 1793755288750,
+      "stats": {
+        "playbackMs": 165135.12036132812,
+        "elapsedMs": 60164.324951171875,
         "todayFinished": 0
       },
       "webContents": 4,
@@ -234,805 +665,375 @@
         },
         {
           "type": "GPU",
-          "workingSetSize": 147376
+          "workingSetSize": 152604
         },
         {
           "type": "Utility",
-          "workingSetSize": 61180
+          "workingSetSize": 60572
         },
         {
           "type": "Tab",
-          "workingSetSize": 105108
+          "workingSetSize": 108408
         },
         {
           "type": "Tab",
-          "workingSetSize": 116164
+          "workingSetSize": 118432
         },
         {
           "type": "Utility",
-          "workingSetSize": 95916
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 118744
+          "workingSetSize": 117716
         },
         {
           "type": "Tab",
-          "workingSetSize": 119684
+          "workingSetSize": 117872
         }
       ]
     },
     {
-      "at": 1793699852291,
+      "at": 1793755293783,
       "stats": {
-        "playbackMs": 72760.43115234375,
-        "elapsedMs": 30126.755859375,
+        "playbackMs": 172620.67529296875,
+        "elapsedMs": 65156.60595703125,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 135416
+          "workingSetSize": 134920
         },
         {
           "type": "GPU",
-          "workingSetSize": 147376
+          "workingSetSize": 151284
         },
         {
           "type": "Utility",
-          "workingSetSize": 61180
+          "workingSetSize": 60572
         },
         {
           "type": "Tab",
-          "workingSetSize": 105524
+          "workingSetSize": 108516
         },
         {
           "type": "Tab",
-          "workingSetSize": 116188
+          "workingSetSize": 118392
         },
         {
           "type": "Utility",
-          "workingSetSize": 95916
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 118752
+          "workingSetSize": 117788
         },
         {
           "type": "Tab",
-          "workingSetSize": 118248
+          "workingSetSize": 117828
         }
       ]
     },
     {
-      "at": 1793699857343,
+      "at": 1793755298820,
       "stats": {
-        "playbackMs": 85292.1181640625,
-        "elapsedMs": 35143.755859375,
+        "playbackMs": 187663.32739257812,
+        "elapsedMs": 70171.60595703125,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 135612
+          "workingSetSize": 134896
         },
         {
           "type": "GPU",
-          "workingSetSize": 147380
+          "workingSetSize": 152320
         },
         {
           "type": "Utility",
-          "workingSetSize": 61180
+          "workingSetSize": 60572
         },
         {
           "type": "Tab",
-          "workingSetSize": 106004
+          "workingSetSize": 108076
         },
         {
           "type": "Tab",
-          "workingSetSize": 116280
+          "workingSetSize": 118432
         },
         {
           "type": "Utility",
-          "workingSetSize": 95916
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 118792
+          "workingSetSize": 117956
         },
         {
           "type": "Tab",
-          "workingSetSize": 118276
+          "workingSetSize": 117868
         }
       ]
     },
     {
-      "at": 1793699862436,
+      "at": 1793755303856,
       "stats": {
-        "playbackMs": 95321.14208984375,
-        "elapsedMs": 40161.434814453125,
+        "playbackMs": 195207.32739257812,
+        "elapsedMs": 72686.60595703125,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 135808
+          "workingSetSize": 134820
         },
         {
           "type": "GPU",
-          "workingSetSize": 147384
+          "workingSetSize": 152296
         },
         {
           "type": "Utility",
-          "workingSetSize": 61180
+          "workingSetSize": 60572
         },
         {
           "type": "Tab",
-          "workingSetSize": 106152
+          "workingSetSize": 108236
         },
         {
           "type": "Tab",
-          "workingSetSize": 116504
+          "workingSetSize": 118488
         },
         {
           "type": "Utility",
-          "workingSetSize": 95916
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 118796
+          "workingSetSize": 117696
         },
         {
           "type": "Tab",
-          "workingSetSize": 118400
+          "workingSetSize": 117836
         }
       ]
     },
     {
-      "at": 1793699867606,
+      "at": 1793755308880,
       "stats": {
-        "playbackMs": 102847.4140625,
-        "elapsedMs": 42673.434814453125,
+        "playbackMs": 202723.1923828125,
+        "elapsedMs": 75193.05102539062,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 136324
+          "workingSetSize": 135492
         },
         {
           "type": "GPU",
-          "workingSetSize": 147384
+          "workingSetSize": 152316
         },
         {
           "type": "Utility",
-          "workingSetSize": 61180
+          "workingSetSize": 60572
         },
         {
           "type": "Tab",
-          "workingSetSize": 106036
+          "workingSetSize": 108288
         },
         {
           "type": "Tab",
-          "workingSetSize": 116656
+          "workingSetSize": 118556
         },
         {
           "type": "Utility",
-          "workingSetSize": 95916
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 118952
+          "workingSetSize": 117992
         },
         {
           "type": "Tab",
-          "workingSetSize": 118412
+          "workingSetSize": 117996
         }
       ]
     },
     {
-      "at": 1793699872762,
+      "at": 1793755313921,
       "stats": {
-        "playbackMs": 117914.80493164062,
-        "elapsedMs": 47701.434814453125,
+        "playbackMs": 217767.76123046875,
+        "elapsedMs": 80212.73291015625,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 136324
+          "workingSetSize": 135200
         },
         {
           "type": "GPU",
-          "workingSetSize": 147384
+          "workingSetSize": 152324
         },
         {
           "type": "Utility",
-          "workingSetSize": 61180
+          "workingSetSize": 60572
         },
         {
           "type": "Tab",
-          "workingSetSize": 106208
+          "workingSetSize": 108316
         },
         {
           "type": "Tab",
-          "workingSetSize": 116688
+          "workingSetSize": 118704
         },
         {
           "type": "Utility",
-          "workingSetSize": 95916
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 119132
+          "workingSetSize": 118080
         },
         {
           "type": "Tab",
-          "workingSetSize": 118504
+          "workingSetSize": 118204
         }
       ]
     },
     {
-      "at": 1793699877818,
+      "at": 1793755318956,
       "stats": {
-        "playbackMs": 125424.72778320312,
-        "elapsedMs": 50207.30078125,
+        "playbackMs": 225303.76123046875,
+        "elapsedMs": 85238.73291015625,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 133532
+          "workingSetSize": 134952
         },
         {
           "type": "GPU",
-          "workingSetSize": 146532
+          "workingSetSize": 152352
         },
         {
           "type": "Utility",
-          "workingSetSize": 61120
+          "workingSetSize": 60572
         },
         {
           "type": "Tab",
-          "workingSetSize": 105696
+          "workingSetSize": 108368
         },
         {
           "type": "Tab",
-          "workingSetSize": 115772
+          "workingSetSize": 118988
         },
         {
           "type": "Utility",
-          "workingSetSize": 95916
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 118160
+          "workingSetSize": 118176
         },
         {
           "type": "Tab",
-          "workingSetSize": 117372
+          "workingSetSize": 118184
         }
       ]
     },
     {
-      "at": 1793699882864,
+      "at": 1793755323984,
       "stats": {
-        "playbackMs": 135426.79956054688,
-        "elapsedMs": 55213.65966796875,
+        "playbackMs": 237832.0390625,
+        "elapsedMs": 90250.2998046875,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 133988
+          "workingSetSize": 134984
         },
         {
           "type": "GPU",
-          "workingSetSize": 146532
+          "workingSetSize": 152320
         },
         {
           "type": "Utility",
-          "workingSetSize": 61088
+          "workingSetSize": 60572
         },
         {
           "type": "Tab",
-          "workingSetSize": 105532
+          "workingSetSize": 108368
         },
         {
           "type": "Tab",
-          "workingSetSize": 115852
+          "workingSetSize": 119012
         },
         {
           "type": "Utility",
-          "workingSetSize": 95912
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 118220
+          "workingSetSize": 118324
         },
         {
           "type": "Tab",
-          "workingSetSize": 117496
+          "workingSetSize": 118120
         }
       ]
     },
     {
-      "at": 1793699887918,
+      "at": 1793755329006,
       "stats": {
-        "playbackMs": 147945.07641601562,
-        "elapsedMs": 60223.003662109375,
+        "playbackMs": 247789.18115234375,
+        "elapsedMs": 95201.2138671875,
         "todayFinished": 0
       },
       "webContents": 4,
       "processes": [
         {
           "type": "Browser",
-          "workingSetSize": 133856
+          "workingSetSize": 135376
         },
         {
           "type": "GPU",
-          "workingSetSize": 147032
+          "workingSetSize": 152436
         },
         {
           "type": "Utility",
-          "workingSetSize": 61272
+          "workingSetSize": 60560
         },
         {
           "type": "Tab",
-          "workingSetSize": 106140
+          "workingSetSize": 108232
         },
         {
           "type": "Tab",
-          "workingSetSize": 115948
+          "workingSetSize": 119100
         },
         {
           "type": "Utility",
-          "workingSetSize": 95912
+          "workingSetSize": 93912
         },
         {
           "type": "Tab",
-          "workingSetSize": 118420
+          "workingSetSize": 118564
         },
         {
           "type": "Tab",
-          "workingSetSize": 117596
-        }
-      ]
-    },
-    {
-      "at": 1793699892964,
-      "stats": {
-        "playbackMs": 155477.07641601562,
-        "elapsedMs": 65246.003662109375,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 133824
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146900
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61272
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 106120
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 116252
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95912
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 118720
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 117936
-        }
-      ]
-    },
-    {
-      "at": 1793699898009,
-      "stats": {
-        "playbackMs": 170504.53735351562,
-        "elapsedMs": 70259.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 133676
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146900
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61272
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 105568
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 116316
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95912
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 118784
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 118104
-        }
-      ]
-    },
-    {
-      "at": 1793699903056,
-      "stats": {
-        "playbackMs": 178015.58032226562,
-        "elapsedMs": 72768.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 133964
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146900
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61272
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 105576
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 116568
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95912
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119044
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 118344
-        }
-      ]
-    },
-    {
-      "at": 1793699908130,
-      "stats": {
-        "playbackMs": 185499.486328125,
-        "elapsedMs": 75271.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 134016
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146896
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61268
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 104816
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 116924
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95908
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119228
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 118504
-        }
-      ]
-    },
-    {
-      "at": 1793699913201,
-      "stats": {
-        "playbackMs": 200543.51928710938,
-        "elapsedMs": 80290.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 134052
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146896
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61268
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 104972
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 116904
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95908
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119164
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 118408
-        }
-      ]
-    },
-    {
-      "at": 1793699918257,
-      "stats": {
-        "playbackMs": 208055.25634765625,
-        "elapsedMs": 85304.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 133904
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146896
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61268
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 105104
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 117064
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95908
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119388
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 118656
-        }
-      ]
-    },
-    {
-      "at": 1793699923295,
-      "stats": {
-        "playbackMs": 220576.0703125,
-        "elapsedMs": 90315.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 134196
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146896
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61268
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 105224
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 117344
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95908
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119608
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119068
-        }
-      ]
-    },
-    {
-      "at": 1793699928339,
-      "stats": {
-        "playbackMs": 230609.87622070312,
-        "elapsedMs": 95334.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 134176
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146900
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61268
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 105064
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 117648
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95908
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119908
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119280
-        }
-      ]
-    },
-    {
-      "at": 1793699933390,
-      "stats": {
-        "playbackMs": 238119.1591796875,
-        "elapsedMs": 97838.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 134232
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 146900
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61268
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 105176
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 117908
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95908
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 120216
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119588
-        }
-      ]
-    },
-    {
-      "at": 1793699938439,
-      "stats": {
-        "playbackMs": 253146.9443359375,
-        "elapsedMs": 102852.00366210938,
-        "todayFinished": 0
-      },
-      "webContents": 4,
-      "processes": [
-        {
-          "type": "Browser",
-          "workingSetSize": 134040
-        },
-        {
-          "type": "GPU",
-          "workingSetSize": 147008
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 61264
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 105636
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 118232
-        },
-        {
-          "type": "Utility",
-          "workingSetSize": 95908
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 120640
-        },
-        {
-          "type": "Tab",
-          "workingSetSize": 119960
+          "workingSetSize": 118456
         }
       ]
     }

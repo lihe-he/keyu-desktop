@@ -5,6 +5,8 @@ const path = require('node:path');
 const { spawn, execFileSync } = require('node:child_process');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const { verificationProfile } = require('./verification-profile.cjs');
+const profile = verificationProfile();
 const root = path.resolve(__dirname, '..');
 const version = require('../package.json').version;
 const installer = path.join(root, 'release', `CampusCourseDesktop-Setup-${version}-x64.exe`);
@@ -30,9 +32,10 @@ async function run(file, args) {
 async function inApp(work) {
  const env = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined));
  delete env.ELECTRON_RUN_AS_NODE; delete env.CAMPUS_TEST_MODE; delete env.CAMPUS_USER_DATA;
- const app = await electron.launch({ executablePath: exe, env, timeout: 30000 });
+ const app = await electron.launch({ executablePath: exe, args: profile.args, env, timeout: 30000 });
  try {
   const page = await app.firstWindow(); await page.waitForFunction(() => !!window.campus);
+  await profile.verify(app);
   const command = async c => { const r = await page.evaluate(c => window.campus.command(c), c); assert.equal(r.ok, true, r.error); return r.data; };
   const snapshot = async () => { const r = await page.evaluate(() => window.campus.snapshot()); assert(r.ok); return r.data; };
   return await work({ app, command, snapshot });
@@ -40,6 +43,10 @@ async function inApp(work) {
 }
 (async () => {
  assert.equal(process.platform, 'win32');
+ // NSIS can close same-named portable processes too. Never interrupt a student's
+ // running window even when no installed version is registered.
+ const running = Number(execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "@(Get-Process -Name CampusCourseDesktop -ErrorAction SilentlyContinue).Count"], { encoding: 'utf8', windowsHide: true }).trim());
+ assert.equal(running, 0, 'A course assistant is running. Exit it from the tray before installation verification; no process was stopped.');
  assert.equal(installations().length, 0, 'An existing installation was found; refusing to alter it.');
  assert.equal(await exists(target), false, 'Target must be new.');
  assert(path.relative(path.join(root, '.test-data'), target).startsWith('install-'));
@@ -89,9 +96,9 @@ async function inApp(work) {
  assert.equal(await exists(exe), false, 'Uninstall did not remove test executable');
  assert.equal(installations().length, 0, 'Uninstall registration remains');
  assert(await exists(dataFile), 'Uninstall unexpectedly removed app data');
- report.uninstalled = true; report.uninstallPreservesData = true; report.passed = true;
+ report.uninstalled = true; report.uninstallPreservesData = true; report.isolatedVerification = true; report.passed = true;
  await fs.writeFile(path.join(root, 'reports/install-smoke.json'), JSON.stringify(report, null, 2));
- console.log('Install, installed launch, upgrade, same-version reinstall and uninstall checks passed. User data preserved.');
+ console.log('Install, installed launch, same-version reinstall and uninstall checks passed. Isolated data preserved. Cross-version upgrade tested: ' + report.crossVersionUpgradePreservesData);
 })().catch(async error => {
  report.error = String(error); await fs.writeFile(path.join(root, 'reports/install-smoke.json'), JSON.stringify(report, null, 2));
  console.error(error); process.exitCode = 1;

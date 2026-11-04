@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { createRequire } = require('node:module');
 const root = path.resolve(__dirname, '..');
+const unpacked = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root, 'release', 'win-unpacked');
 const builderRequire = createRequire(require.resolve('electron-builder/package.json'));
 const yaml = builderRequire('js-yaml');
 const asar = builderRequire('@electron/asar');
@@ -43,12 +44,12 @@ async function filesIn(directory) {
       directDependencies[name] = version;
     }
   }
-  const asarFile = path.join(root, 'release', 'win-unpacked', 'resources', 'app.asar');
+  const asarFile = path.join(unpacked, 'resources', 'app.asar');
   const packagedManifest = JSON.parse(asar.extractFile(asarFile, 'package.json').toString('utf8'));
   assert.equal(packagedManifest.version, pkg.version);
   assert.equal(packagedManifest.license, pkg.license);
   assert.deepEqual(packagedManifest.dependencies, pkg.dependencies);
-  assert.equal(hash(await fs.readFile(path.join(root, "release", "win-unpacked", "LICENSE"))), hash(await fs.readFile(path.join(root, "LICENSE"))));
+  assert.equal(hash(await fs.readFile(path.join(unpacked, "LICENSE"))), hash(await fs.readFile(path.join(root, "LICENSE"))));
   const outputHashes = {};
   for (const file of await filesIn(path.join(root, 'out'))) {
     const relative = path.relative(root, file).split(path.sep).join('/');
@@ -59,17 +60,17 @@ async function filesIn(directory) {
   assert(Object.keys(outputHashes).length >= 3, 'Compiled outputs missing');
   for (const file of await filesIn(path.join(root, 'docs'))) {
     const relative = path.relative(path.join(root, 'docs'), file);
-    assert.equal(hash(await fs.readFile(path.join(root, 'release', 'win-unpacked', 'docs', relative))), hash(await fs.readFile(file)), 'Packaged documentation differs: ' + relative);
+    assert.equal(hash(await fs.readFile(path.join(unpacked, 'docs', relative))), hash(await fs.readFile(file)), 'Packaged documentation differs: ' + relative);
   }
-  const nativeFiles = (await filesIn(path.join(root, 'release', 'win-unpacked', 'resources', 'app.asar.unpacked'))).filter(file => file.endsWith(path.join('better-sqlite3', 'prebuilds', 'win32-x64.node')));
+  const nativeFiles = (await filesIn(path.join(unpacked, 'resources', 'app.asar.unpacked'))).filter(file => file.endsWith(path.join('better-sqlite3', 'prebuilds', 'win32-x64.node')));
   assert(nativeFiles.length > 0, 'Unpacked SQLite native module missing');
   const installerFile = `CampusCourseDesktop-Setup-${pkg.version}-x64.exe`;
   const installerBytes = await fs.readFile(path.join(root, 'release', installerFile));
   Object.assign(report, {
-    passed: true, version: pkg.version, lockDocuments: locks.length,
+    passed: true, version: pkg.version, unpackedDirectory: path.relative(root, unpacked).split(path.sep).join('/'), lockDocuments: locks.length,
     lockSha256: hash(lockBytes), directDependencies, lockedPackageCount: Object.keys(application.packages).length,
     outputHashes, asarSha256: hash(await fs.readFile(asarFile)),
-    nativeModules: await Promise.all(nativeFiles.map(async file => ({ file: path.relative(path.join(root, 'release', 'win-unpacked'), file).split(path.sep).join('/'), sha256: hash(await fs.readFile(file)) }))),
+    nativeModules: await Promise.all(nativeFiles.map(async file => ({ file: path.relative(unpacked, file).split(path.sep).join('/'), sha256: hash(await fs.readFile(file)) }))),
     installerFile, installerSha256: hash(installerBytes),
     note: 'Identity checks only; not a real-platform or clean-Windows compatibility result.'
   });

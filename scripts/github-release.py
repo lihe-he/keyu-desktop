@@ -149,7 +149,7 @@ def main():
             f'- 源码提交：`{head}`\n'
             f'- 自动检查：{manifest["tests"]["unitPassed"]} 项单元测试，{manifest["tests"]["desktopPassed"]} 项桌面流程。\n'
             f'- 合成媒体运行：{manifest["tests"]["syntheticSoakElapsedMs"] / 60000:.1f} 分钟，不是真实平台两小时验收。\n'
-            f'- 开发机升级：{manifest["tests"]["upgradeFrom"]} → {manifest["tests"]["upgradeTo"]}，保留数据。\n\n'
+            f'- 开发机安装 / 同版本重装 / 卸载保留数据：通过；跨版本升级实测：{manifest["tests"].get("crossVersionUpgradePreservesData", False)}（{manifest["tests"]["upgradeFrom"]} → {manifest["tests"]["upgradeTo"]}）。\n\n'
             '**学习通、中国大学 MOOC、智慧树均未完成真实课程验收；干净 Windows 10/11 安装与真实两小时验收仍未完成。**\n\n'
             '安装包未签名，请核对 SHA256SUMS.txt；不要关闭系统安全功能。不要上传密码、验证码、Cookie 或用户数据库。\n')
     release = existing or client.call('POST', f'/repos/{REPOSITORY}/releases',

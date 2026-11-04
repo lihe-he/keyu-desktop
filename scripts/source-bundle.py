@@ -27,6 +27,8 @@ unit, desktop, soak, packaged, install = [read_json(name) for name in (
 assert unit['numFailedTests'] == 0 and unit['numPassedTests'] > 0
 assert desktop['stats']['unexpected'] == 0 and desktop['stats']['expected'] == 5
 assert soak['passed'] and packaged['passed'] and install['passed']
+assert soak['version'] == VERSION, 'Synthetic endurance report belongs to another version.'
+assert packaged['isolatedVerification'] and install['isolatedVerification'], 'Packaged checks must not use real account data.'
 public_entry = read_json('public-entry-smoke.json')
 assert public_entry['passed'] and public_entry['version'] == VERSION
 integrity = read_json('release-integrity.json')
@@ -85,9 +87,9 @@ manifest = {
 
 - 安装：双击 {INSTALLER.name}，按当前用户安装。未签名，请先核对来源及 SHA256SUMS.txt，不要关闭系统安全功能。
 - 源码：解压 {ARCHIVE.name}；内含代码、锁文件、测试、使用说明和兼容性报告，不含浏览器账号数据或 node_modules。
-- 免安装：保留完整 win-unpacked 文件夹，运行其中 CampusCourseDesktop.exe。
+- 免安装：保留完整 {integrity.get('unpackedDirectory', 'release/win-unpacked')} 文件夹，运行其中 CampusCourseDesktop.exe。
 - 自动检查：{unit['numPassedTests']} 项单元测试、{desktop['stats']['expected']} 项桌面流程通过；约 {soak['elapsedMs']/60000:.1f} 分钟合成媒体运行通过。
-- 安装校验：本开发机安装、独立启动、升级（{install.get('fromVersion')} → {install.get('toVersion')}）及同版本重装保留数据、卸载保留数据通过；不是干净 Windows 10/11 测试机验收。
+- 安装校验：本开发机安装、独立启动、同版本重装与卸载保留数据通过；跨版本升级是否实测：{install.get('crossVersionUpgradePreservesData', False)}（起止版本 {install.get('fromVersion')} → {install.get('toVersion')}）。不是干净 Windows 10/11 测试机验收。
 
 **当前三个真实平台都未完成实课验收，不能认定为计划中的完整首版。**
 需要用户在本机分别登录三个平台，各准备一门课程的连续两个可进入视频章节，继续登录、目录、播放、切章、完成状态及异常验证。不要把密码或验证码发到聊天里。

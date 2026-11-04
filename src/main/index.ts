@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, Notification, dia
 import { join, isAbsolute } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { writeFile } from 'node:fs/promises'
+import { mkdirSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import type { Command, Result, Snapshot, Notice, Account, Chapter } from '../shared/contracts'
 import { platformIds } from '../shared/contracts'
@@ -14,9 +15,14 @@ import { TaskEngine } from './core/engine'
 import { aggregateIntervals, localDayStart } from './core/stats'
 import { ReminderService } from './core/reminders'
 import { setupFixtureSession } from './testing/fixtures'
+import { verificationProfilePath } from './core/verification-profile'
 const fixtureMode=!app.isPackaged&&process.env.CAMPUS_TEST_MODE==='1'
 const customData=!app.isPackaged?process.env.CAMPUS_USER_DATA:undefined
-if(customData&&isAbsolute(customData))app.setPath('userData',customData)
+if(app.commandLine.hasSwitch('campus-verification-profile')){
+ const path=verificationProfilePath(app.commandLine.getSwitchValue('campus-verification-profile'),app.getPath('temp'))
+ mkdirSync(path,{recursive:true});app.setPath('userData',path)
+}
+else if(customData&&isAbsolute(customData))app.setPath('userData',customData)
 else app.setPath('userData',join(app.getPath('appData'),'CampusCourseDesktop'))
 app.setAppUserModelId('cn.campuscourse.desktop')
 if(!fixtureMode&&!app.requestSingleInstanceLock()){app.quit()}else{void app.whenReady().then(boot).catch(error=>{dialog.showErrorBox('网课助手无法启动','未修改或清空你的数据。请保留数据目录并联系开发者。\n'+redact(String(error)));app.exit(1)})}
