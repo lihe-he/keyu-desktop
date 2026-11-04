@@ -36,7 +36,9 @@ export class PlatformAdapter {
   const probes=await this.read(contents);const issue=probes.find(p=>p.issue)?.issue;if(issue)throw new Error(issue)
   const output=new Map<string,Course>()
   for(const p of probes)for(const c of p.courses)if(isPersistableCourseUrl(this.platform,c.url)){const id=fingerprint(account.id+'|'+c.url);output.set(id,{id,accountId:account.id,platform:this.platform,title:c.title,url:c.url,updatedAt:Date.now(),completion:c.completion})}
-  if(!output.size)throw new Error('未可靠识别到个人课程。请在工作台打开“我的课程”后重试；该页面可能尚未适配。')
+  if(!output.size)throw new Error(this.platform==='chaoxing'
+   ? '未识别到个人课程。请在工作台内点学习通自己的“课程”，看到“我学的课”和课程封面后再刷新；课表不是网课目录。如果已经在该页面，说明当前结构仍需适配。'
+   : '未可靠识别到个人课程。请在工作台打开“我的课程”后重试；该页面可能尚未适配。')
   return [...output.values()]
  }
  async chapters(contents: WebContents, course: Course): Promise<Chapter[]> {

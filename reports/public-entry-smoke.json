@@ -1,7 +1,7 @@
 {
   "kind": "real-public-entry-NOT-authenticated-course-acceptance",
   "passed": true,
-  "startedAt": "2026-11-04T01:19:19.834Z",
+  "startedAt": "2026-11-04T01:53:07.628Z",
   "platforms": [
     {
       "platform": "chaoxing",
@@ -58,8 +58,8 @@
       "loadErrors": []
     }
   ],
-  "version": "0.1.4",
+  "version": "0.1.5",
   "packaged": true,
   "isolatedVerification": true,
-  "finishedAt": "2026-11-04T01:19:41.483Z"
+  "finishedAt": "2026-11-04T01:53:29.232Z"
 }

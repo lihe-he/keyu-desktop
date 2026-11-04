@@ -1,13 +1,13 @@
 {
   "passed": true,
-  "at": "2026-11-04T01:19:19.355Z",
-  "executablePath": "D:\\Projects\\web项目\\campus-course-desktop\\release\\build-0.1.4\\win-unpacked\\CampusCourseDesktop.exe",
+  "at": "2026-11-04T01:53:06.963Z",
+  "executablePath": "D:\\Projects\\web项目\\campus-course-desktop\\release\\build-0.1.5\\win-unpacked\\CampusCourseDesktop.exe",
   "isolatedVerification": true,
   "environment": {
     "packaged": true,
     "userData": "%TEMP%/CampusCourseDesktop-verification/[test-profile]",
     "testHook": "undefined",
-    "version": "0.1.4"
+    "version": "0.1.5"
   },
   "emptyProduction": true,
   "accountRoundtrip": true,

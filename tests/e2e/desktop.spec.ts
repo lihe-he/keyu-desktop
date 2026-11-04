@@ -20,6 +20,7 @@ test('three platform media flows, isolation, lifecycle and persisted storage',as
   const a=await command({type:'account.add',platform,label:'测试同学 · '+platform});ids.push(a.id)
   await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id});
   const c=(await snapshot()).courses.find(c=>c.accountId===a.id)!
+  if(platform==='chaoxing'){expect(c.url).toContain('https://mooc1-2.chaoxing.com/mooc-ans/visit/stucoursemiddle');expect(c.url).not.toContain('synthetic-context');expect(c.title).not.toContain('示例教师')}
   const chapters=await command({type:'course.chapters',courseId:c.id});expect(chapters).toHaveLength(2)
   await command({type:'task.add',courseId:c.id,chapterIds:[]})
  }
@@ -46,6 +47,7 @@ async function prepare(platform:'chaoxing'|'icourse'|'zhihuishu'='chaoxing'){
 test('all six pages operate through the UI, with safe modals and native view lifecycle',async()=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));const nav=page.getByRole('navigation',{name:'主导航'});
  await nav.getByRole('button',{name:'账号管理',exact:true}).click();await page.getByTestId('add-account').click();await page.getByTestId('account-label').fill('我的测试账号');await page.getByRole('button',{name:'添加并打开登录'}).click();await expect(page.locator('h1')).toHaveText('学习工作台');await expect.poll(async()=>(await snapshot()).views.length).toBe(1)
+ await expect(page.getByRole('button',{name:'打开学习通个人空间',exact:true})).toBeVisible();await expect(page.locator('.workbench-status')).toContainText('课表不是网课目录')
  await nav.getByRole('button',{name:'账号管理',exact:true}).click();await expect(page.getByRole('heading',{name:'我的测试账号',exact:true})).toBeVisible();await page.screenshot({path:'reports/screenshots/02-accounts.png'});
  await page.getByRole('button',{name:'修改账号备注'}).click();await page.getByRole('textbox').fill('我的课程账号');await page.getByRole('button',{name:'保存备注'}).click();await expect(page.getByRole('heading',{name:'我的课程账号',exact:true})).toBeVisible()
  await nav.getByRole('button',{name:'我的课程',exact:true}).click();await page.getByRole('button',{name:'刷新所选账号'}).click();await expect(page.getByRole('button',{name:'选择章节'})).toBeVisible();await page.screenshot({path:'reports/screenshots/03-courses.png'});

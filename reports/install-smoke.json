@@ -1,16 +1,6 @@
 {
   "kind": "developer-host-NOT-clean-Windows-acceptance",
-  "at": "2026-11-04T01:19:42.008Z",
-  "passed": true,
-  "installerSha256": "518cc9cfa5a432f90b70f63d9518e20690a88da67e0d83aa7d6f53ffc28ec926",
-  "installed": true,
-  "fromVersion": "0.1.4",
-  "installedLaunch": true,
-  "toVersion": "0.1.4",
-  "crossVersionUpgradePreservesData": false,
-  "sameVersionReinstallPreservesData": true,
-  "uninstallSettlementMs": 3448,
-  "uninstalled": true,
-  "uninstallPreservesData": true,
-  "isolatedVerification": true
+  "at": "2026-11-04T01:52:07.179Z",
+  "passed": false,
+  "error": "AssertionError [ERR_ASSERTION]: A course assistant is running. Exit it from the tray before installation verification; no process was stopped.\n\n5 !== 0\n"
 }

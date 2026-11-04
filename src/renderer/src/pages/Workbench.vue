@@ -18,6 +18,10 @@ const playerLabels: Record<Observation['state'], string> = {
  playing: '播放器正在播放', paused: '播放器已暂停', ended: '本地播放已结束', buffering: '播放器正在缓冲', unknown: '播放器状态待核对'
 }
 const playerLabel = computed(() => playerLabels[task.value?.playbackState ?? 'unknown'])
+const homeLabel = computed(() => store.platform === 'chaoxing' ? '打开学习通个人空间' : '打开我的课程入口')
+const browseHint = computed(() => store.platform === 'chaoxing'
+ ? '先点学习通网页自己的“课程”，看到“我学的课”和课程封面后，再点助手左侧“我的课程”刷新。课表不是网课目录。'
+ : '浏览模式不运行学习任务。登录后，请从“我的课程”读取课程并加入队列。')
 const chapterCompletion = (c: Chapter, index: number) => index === task.value?.chapterIndex ? task.value.platformCompletion : c.completion
 const completionLabel = (c: Chapter, index: number) => chapterCompletion(c,index) === 'complete' ? '平台已确认完成' : chapterCompletion(c,index) === 'incomplete' ? '平台尚未确认完成' : '平台完成状态待确认'
 function chapterLabel(index: number): string {
@@ -75,7 +79,7 @@ onUnmounted(() => { disposed = true; observer?.disconnect(); void window.campus.
    <div class="button-group">
     <button class="icon-button" aria-label="平台页面后退" :disabled="!info||info.mode==='task'" @click="store.run({type:'view.navigate',platform:store.platform,action:'back'})"><ArrowLeft :size="17"/></button>
     <button class="icon-button" aria-label="刷新平台页面" :disabled="!info||info.mode==='task'" @click="store.run({type:'view.navigate',platform:store.platform,action:'reload'})"><RefreshCw :size="16"/></button>
-    <button class="icon-button" aria-label="打开我的课程入口" :disabled="!info||info.mode==='task'" @click="store.run({type:'view.navigate',platform:store.platform,action:'home'})"><Home :size="17"/></button>
+    <button class="icon-button" :aria-label="homeLabel" :title="homeLabel" :disabled="!info||info.mode==='task'" @click="store.run({type:'view.navigate',platform:store.platform,action:'home'})"><Home :size="17"/></button>
    </div>
    <div class="address-pill">{{ info ? store.accountLabel(info.accountId)+' · '+(info.mode==='task'?'任务页面':'登录 / 浏览模式') : task ? store.accountLabel(task.accountId)+' · 任务页面已释放' : '尚未打开平台页面' }}</div>
    <button class="icon-button" aria-label="让当前平台发声" :disabled="!info" :class="{selected:store.data?.settings.audiblePlatform===store.platform&&!store.data?.settings.muteAll}" @click="store.run({type:'settings.update',settings:{audiblePlatform:store.platform,muteAll:false}})"><Volume2 :size="17"/></button>
@@ -83,7 +87,7 @@ onUnmounted(() => { disposed = true; observer?.disconnect(); void window.campus.
   </div>
   <div class="workbench-status">
    <span v-if="task" :class="['badge',task.status==='running'?'green':'amber']">{{ stateLabels[task.status] }}</span>
-   <span>{{ task ? (task.reason||'只按实际观察的播放状态推进，平台完成状态单独核对。') : '浏览模式不运行学习任务。登录后，请从“我的课程”读取课程并加入队列。' }}</span>
+   <span>{{ task ? (task.reason||'只按实际观察的播放状态推进，平台完成状态单独核对。') : browseHint }}</span>
   </div>
   <div v-if="task" class="workbench-task-strip" data-testid="workbench-task-controls">
    <div class="workbench-current"><strong :title="task.chapters[task.chapterIndex]?.title">{{ task.chapters[task.chapterIndex]?.title }}</strong><span data-testid="player-observation">{{ playerLabel }} · {{ clock(task.currentTime) }} / {{ clock(task.duration) }}</span></div>
