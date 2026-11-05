@@ -17,6 +17,8 @@
 
 2026-11-05 第一候选复测仍无法导入另一套 v24 目录，且用户反馈扫码两次才进入。第二候选补充 `#stuCourseList` 识别及不保存签名的课程定位，打开时从当前账号可见目录取得临时入口；增加“手机已确认，核对登录”及更明确的跳转失败提示。用户确认一次扫码后点击该按钮可进入，随后已成功导入课程。课程打开时仍见加载失败和 HTTP 跳转拦截；自动登录跳转、重启登录保持、章节及播放未通过，不宣称问题全部解决。
 
+第三候选已定位一处真实课程跳转：v24 入口返回 `mooc1.chaoxing.com/visit/stucoursemiddle` 的旧 HTTP 地址。第四候选对这一条主页面服务端重定向尝试一次同站点 HTTPS 访问；只有刚从当前目录取得的签名入口可触发，其他 HTTP 地址仍阻止，再次失败即停止。签名地址仅在内存中使用。HTTPS 公开端点能响应不等于已通过认证课程验收，真实章节与播放仍待核对。
+
 ## 0.1.4 扫码登录修复
 
 学习通默认登录返回 HTTP 地址，被应用的 HTTPS 限制拦截；现在明确传入官方 HTTPS 个人空间入口。没有放开 HTTP 或修改登录凭据。官方公开页和受控导航测试通过；2026-11-04 用户已确认本次账号扫码登录成功，登录持久化与真实课程仍待验证。详情见 `docs/学习通扫码登录修复.md`。此为发布后验收记录，不改写既有 v0.1.4 标签或附件。
@@ -68,7 +70,7 @@ pnpm typecheck
 pnpm exec vitest run --reporter=default --reporter=json --outputFile=reports/unit-results.json
 pnpm build
 $env:PLAYWRIGHT_JSON_OUTPUT_NAME='reports/e2e-results.json'
-pnpm exec playwright test --project=desktop --reporter=list,json
+pnpm exec playwright test --project=desktop '--reporter=list,json'
 # 短时合成检查；如需两小时合成检查，先移除 CAMPUS_SOAK_MS
 $env:CAMPUS_SOAK_MS='120000'
 pnpm exec playwright test --project=soak --reporter=list

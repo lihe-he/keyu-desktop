@@ -5,9 +5,12 @@ import { platformOf } from '../shared/platforms'
 import { isAllowedUrl, isDirectoryCourse, partitionFor, safeUrl } from './core/security'
 import type { PlaybackRuntime } from './core/engine'
 import { PlatformAdapter, within } from './adapters/adapter'
+import { blockedNavigationMessage, pageLoadFailure, courseHttpsRetry, type NavigationStage } from './core/navigation'
 interface Entry { view: WebContentsView; accountId: string; platform: PlatformId; taskId: string|null; generation: number; mode:'browse'|'task'; visible:boolean; allowedToPlay:boolean; expectedUrl:string; navigationChanged:boolean; browsingCourseId?:string }
+interface NavigationAttempt {source:string;loginPage:boolean;blocker?:string;secureRetry?:string}
 export class BrowserRuntime implements PlaybackRuntime {
  private entries=new Map<PlatformId,Entry>();private sessions=new Map<string,Session>();private popups=new Map<string,Set<BrowserWindow>>();private displayed:PlatformId|null=null;private lastBounds:Bounds|null=null
+ private navigationIssues=new WeakMap<WebContents,{pending?:NavigationAttempt}>()
  constructor(private window: BrowserWindow, private account:(id:string)=>Account, private changed:()=>void, private warn:(message:string)=>void, private fixtureSetup?: (ses:Session,account:Account)=>void){}
  adapter(platform:PlatformId):PlatformAdapter {return new PlatformAdapter(platform)}
  getSession(account:Account):Session {
@@ -25,18 +28,27 @@ export class BrowserRuntime implements PlaybackRuntime {
   this.fixtureSetup?.(ses,account);return ses
  }
  private guard(contents:WebContents,account:Account,isPopup=false):void {
-  const block=(event:Electron.Event,url:string)=>{if(!isAllowedUrl(account.platform,url)){event.preventDefault();this.warn(url.startsWith('http:')?'已阻止平台跳转至不安全的 HTTP 页面。若已在手机确认，请点“手机已确认，核对登录”，检查个人空间，无需先重复扫码。':'已阻止未验证的页面跳转。如学校使用特殊登录入口，需要先补充兼容性验证。')}}
-  contents.on('will-frame-navigate',event=>block(event,event.url));contents.on('will-navigate',block);contents.on('will-redirect',block)
-  contents.on('did-fail-load',(_event,code,_description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3)this.warn('平台页面加载失败（错误代码 '+code+'）。请检查网络后重试；登录是否成功需在个人空间核对。')})
+  const issues:{pending?:NavigationAttempt}={};this.navigationIssues.set(contents,issues)
+  const block=(event:Electron.Event,url:string,isMainFrame:boolean,stage:NavigationStage)=>{if(!isAllowedUrl(account.platform,url)){
+   event.preventDefault();const attempt=issues.pending
+   if(isMainFrame&&stage==='redirect'&&attempt){const retry=courseHttpsRetry(account.platform,attempt.source,url);if(retry){attempt.secureRetry=retry;return}}
+   const loginPage=attempt?.loginPage??(account.platform==='chaoxing'&&/^https:\/\/passport2\.chaoxing\.com\/login(?:[?#]|$)/.test(contents.getURL()))
+   const message=blockedNavigationMessage(account.platform,url,isMainFrame,stage,loginPage)
+   if(isMainFrame&&attempt)attempt.blocker=message;this.warn(message)
+  }}
+  contents.on('will-frame-navigate',event=>block(event,event.url,event.isMainFrame,'navigate'))
+  contents.on('will-navigate',(event,url)=>block(event,url,true,'navigate'))
+  contents.on('will-redirect',event=>block(event,event.url,event.isMainFrame,'redirect'))
+  contents.on('did-fail-load',(_event,code,_description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3)this.warn(issues.pending?.blocker??pageLoadFailure({errno:code}))})
   contents.setWindowOpenHandler(({url})=>{
-   if(!isAllowedUrl(account.platform,url)){this.warn('已阻止打开平台名单之外的窗口。');return {action:'deny'}}
+   if(!isAllowedUrl(account.platform,url)){this.warn(blockedNavigationMessage(account.platform,url,true,'new-window',false));return {action:'deny'}}
    // Only browsing/login can open a controlled authentication window.
    if(isPopup||this.entries.get(account.platform)?.mode==='task'){this.warn('学习任务请求新窗口，请暂停任务后在工作台人工处理。');return {action:'deny'}}
    // A directory course is a normal course page, not an authentication popup.
    // Keep it in the scheduled account's view; never persist the signed address.
    const entry=this.entries.get(account.platform)
    if(entry?.accountId===account.id&&isDirectoryCourse(account.platform,url)){
-    entry.browsingCourseId=undefined;void this.load(entry,url).catch(()=>this.warn('课程入口未能加载，请返回“我学的课”后重试。'));return {action:'deny'}
+    entry.browsingCourseId=undefined;void this.load(entry,url).catch(error=>this.warn(error instanceof Error?error.message:'课程入口未能加载，请返回“我学的课”后重试。'));return {action:'deny'}
    }
    const existingPopup=[...(this.popups.get(account.id)??[])].find(w=>!w.isDestroyed());if(existingPopup){existingPopup.show();existingPopup.focus();return {action:'deny'}}
    const popup=new BrowserWindow({width:960,height:740,parent:this.window,show:false,autoHideMenuBar:true,webPreferences:{session:this.getSession(account),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:join(__dirname,'../preload/platform.js')}})
@@ -65,7 +77,20 @@ export class BrowserRuntime implements PlaybackRuntime {
  }
  private async load(entry:Entry,url:string):Promise<void>{
   if(!isAllowedUrl(entry.platform,url))throw new Error('课程地址不在该平台允许的范围内。')
-  try{await within(entry.view.webContents.loadURL(url),30000)}catch{throw new Error('平台页面未能加载，请检查网络或稍后重试。')}
+  const contents=entry.view.webContents,issues=this.navigationIssues.get(contents)
+  const attempt:NavigationAttempt={source:url,loginPage:entry.platform==='chaoxing'&&/^https:\/\/passport2\.chaoxing\.com\/login(?:[?#]|$)/.test(url)}
+  if(issues)issues.pending=attempt
+  try{
+   try{await within(contents.loadURL(url),30000)}catch(error){
+    if(this.entries.get(entry.platform)!==entry||contents.isDestroyed()||issues?.pending!==attempt)throw new Error('页面操作已取消。')
+    const retry=attempt.secureRetry
+    if(!retry)throw new Error(attempt.blocker??pageLoadFailure(error))
+    // A single HTTPS attempt in the same account session. Further redirects
+    // cannot schedule another retry; signed addresses remain local to this load.
+    attempt.source='';attempt.secureRetry=undefined;attempt.blocker=undefined
+    try{await within(contents.loadURL(retry),30000)}catch(error){throw new Error(attempt.blocker??pageLoadFailure(error))}
+   }
+  }finally{if(issues?.pending===attempt)issues.pending=undefined}
   if(this.entries.get(entry.platform)!==entry||entry.view.webContents.isDestroyed())throw new Error('页面操作已取消。')
  }
  async browse(account:Account,url=platformOf(account.platform).home):Promise<void>{

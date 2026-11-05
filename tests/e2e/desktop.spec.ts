@@ -13,6 +13,41 @@ async function snapshot():Promise<Snapshot>{return page.evaluate(async()=>{const
 test.beforeEach(async()=>{await mkdir('.test-data',{recursive:true});data=await mkdtemp(join(process.cwd(),'.test-data','e2e-'));await launch()})
 test.afterEach(async()=>{await app?.close()})
 
+test('observed v24 legacy hop retries HTTPS once without retaining the signed address',async()=>{
+ const a=await command({type:'account.add',platform:'chaoxing',label:'v24HTTPS测试'})
+ await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id})
+ const [course]=(await snapshot()).courses
+ expect(await command({type:'course.chapters',courseId:course.id})).toHaveLength(2)
+ const s=await snapshot();expect(s.tasks).toHaveLength(0);expect(s.notices).toHaveLength(0)
+ const stored=await app.evaluate(async(_e,id)=>{await new Promise<void>(r=>setImmediate(r));const t=(globalThis as any).__campusTest;return {url:t.runtime.contentsFor(id).getURL(),data:JSON.stringify({courses:t.store.courses(),logs:t.store.logs(),notices:t.store.notices()})}},a.id)
+ expect(stored.url).toMatch(/^https:\/\/mooc1-2\.chaoxing\.com\//)
+ expect(stored.data).not.toMatch(/ckenc|synthetic-hop-secret|synthetic-signature|space_token/)
+})
+
+test('repeated legacy hop stops after one HTTPS retry',async()=>{
+ const a=await command({type:'account.add',platform:'chaoxing',label:'v24循环测试'})
+ await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id})
+ await app.evaluate(async(_e,id)=>{await new Promise<void>(r=>setImmediate(r));const t=(globalThis as any).__campusTest;t.secureHopCount=0;t.runtime.contentsFor(id).on('did-start-navigation',(_event:unknown,url:string)=>{if(url.startsWith('https://mooc1.chaoxing.com/visit/stucoursemiddle?'))t.secureHopCount++})},a.id)
+ const [course]=(await snapshot()).courses
+ await expect(command({type:'course.chapters',courseId:course.id})).rejects.toThrow('主页面 · 服务端重定向')
+ expect(await app.evaluate(()=> (globalThis as any).__campusTest.secureHopCount)).toBe(1)
+ expect((await snapshot()).tasks).toHaveLength(0)
+ expect(JSON.stringify((await snapshot()).notices)).not.toMatch(/synthetic-hop-secret|ckenc|核对登录/)
+})
+
+test('signed course HTTP redirects report the actual blocker without leaking the address',async()=>{
+ const a=await command({type:'account.add',platform:'chaoxing',label:'v24跳转测试'})
+ await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id})
+ const [course]=(await snapshot()).courses
+ await expect(command({type:'course.chapters',courseId:course.id})).rejects.toThrow('主页面 · 服务端重定向')
+ const s=await snapshot(),message=s.notices.find(n=>n.body.includes('服务端重定向'))?.body
+ expect(message).toContain('HTTP');expect(message).toContain('mooc1.chaoxing.com');expect(message).toContain('/mycourse/studentcourse')
+ expect(message).not.toMatch(/courseId|ckenc|synthetic-secret|核对登录/)
+ expect(s.tasks).toHaveLength(0)
+ const url=await app.evaluate(async(_e,id)=>{await new Promise<void>(r=>setImmediate(r));return (globalThis as any).__campusTest.runtime.contentsFor(id).getURL()},a.id)
+ expect(url).not.toMatch(/^http:/)
+})
+
 test('v24 signed directory import resolves the current entry without storing credentials',async()=>{
  const a=await command({type:'account.add',platform:'chaoxing',label:'v24目录测试'})
  await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id})

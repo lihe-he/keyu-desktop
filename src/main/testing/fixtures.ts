@@ -10,10 +10,18 @@ export function setupFixtureSession(ses:Session,account:Account):void{
  const platform=platformOf(account.platform);const audio=wave(8)
  ses.protocol.handle('https',request=>{
   const url=new URL(request.url)
-  const v24=account.platform==='chaoxing'&&account.label==='v24目录测试'
+  const v24=account.platform==='chaoxing'&&['v24目录测试','v24跳转测试','v24HTTPS测试','v24循环测试'].includes(account.label)
+  const secureRetry=account.label==='v24HTTPS测试'||account.label==='v24循环测试'
+  const legacyEntry='http://mooc1.chaoxing.com/visit/stucoursemiddle?courseid=101&clazzid=201&cpi=301&ckenc=synthetic-hop-secret'
   if(v24&&url.pathname==='/courselist/opencoursenewfy'){
    if(url.searchParams.get('ckenc')!=='synthetic-signature')return new Response('测试：未取得当前目录入口',{status:403})
+   if(account.label==='v24跳转测试')return new Response(null,{status:302,headers:{Location:'http://mooc1.chaoxing.com/mycourse/studentcourse?courseId=101&ckenc=synthetic-secret'}})
+   if(secureRetry)return new Response(null,{status:302,headers:{Location:legacyEntry}})
    return new Response(null,{status:302,headers:{Location:'https://mooc1-2.chaoxing.com/mooc-ans/visit/stucoursemiddle?courseid=101&clazzid=201&cpi=301'}})
+  }
+  if(secureRetry&&url.hostname==='mooc1.chaoxing.com'&&url.pathname==='/visit/stucoursemiddle'){
+   if(url.searchParams.get('ckenc')!=='synthetic-hop-secret')return new Response('测试：中间入口参数缺失',{status:403})
+   return new Response(null,{status:302,headers:{Location:account.label==='v24循环测试'?legacyEntry:'https://mooc1-2.chaoxing.com/mooc-ans/visit/stucoursemiddle?courseid=101&clazzid=201&cpi=301'}})
   }
   if(url.pathname==='/fixture.wav'){
    const range=request.headers.get('range');const match=range?.match(/bytes=(\d+)-(\d*)/);const start=match?Number(match[1]):0,end=match&&match[2]?Math.min(Number(match[2]),audio.length-1):audio.length-1
