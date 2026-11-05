@@ -1,4 +1,4 @@
-import { isPersistableCourseUrl } from '../../src/main/core/security'
+import { isPersistableCourseUrl, courseIdentityUrl } from '../../src/main/core/security'
 import { describe,it,expect } from 'vitest'
 import { isAllowedUrl,partitionFor,trustedSender,safeUrl,redact } from '../../src/main/core/security'
 import { commandSchema } from '../../src/shared/validation'
@@ -29,7 +29,22 @@ describe('IPC trust boundary',()=>{
 })
 
 describe('credential-bearing course addresses never reach storage',()=>{
- it.each(['access_token=secret','ticket=secret','authorization=secret','signature=secret','sessionId=secret'])('rejects %s',query=>expect(isPersistableCourseUrl('chaoxing','https://i.chaoxing.com/course?'+query)).toBe(false))
+ it.each(['access_token=secret','ticket=secret','authorization=secret','signature=secret','sessionId=secret','ckenc=secret','space_token=secret'])('rejects %s',query=>expect(isPersistableCourseUrl('chaoxing','https://i.chaoxing.com/course?'+query)).toBe(false))
  it('allows ordinary course identifiers',()=>expect(isPersistableCourseUrl('chaoxing','https://i.chaoxing.com/course?courseId=123&chapterId=456')).toBe(true))
  it('rejects credential fragments',()=>expect(isPersistableCourseUrl('chaoxing','https://i.chaoxing.com/course#token=secret')).toBe(false))
+})
+
+describe('v24 directory course identity',()=>{
+ const base='https://v24.chaoxing.com/courselist/opencoursenewfy?role=3&courseId=101&clazzId=201&cpi=301'
+ it('keeps only course identifiers; rotating signatures have the same identity',()=>{
+  expect(courseIdentityUrl('chaoxing',base+'&ckenc=synthetic-first')).toBe(base)
+  expect(courseIdentityUrl('chaoxing',base+'&ckenc=synthetic-second')).toBe(base)
+  expect(isPersistableCourseUrl('chaoxing',base)).toBe(true)
+ })
+ it.each([base+'&space_token=synthetic',base+'&unexpected=value',base+'&courseId=102',base+'#ckenc=synthetic',base.replace('role=3','role=1'),base.replace('courseId=101','courseId=bad'),base.replace('&cpi=301','')])('rejects ambiguous or unsupported identities %#',url=>expect(courseIdentityUrl('chaoxing',url)).toBeNull())
+ it('does not strip signatures from other platforms or paths',()=>{
+  expect(courseIdentityUrl('icourse',base+'&ckenc=synthetic')).toBeNull()
+  expect(courseIdentityUrl('chaoxing',base.replace('opencoursenewfy','other')+'&ckenc=synthetic')).toBeNull()
+ })
+ it('redacts signatures from error messages',()=>expect(redact('ckenc=synthetic-signature')).not.toContain('synthetic-signature'))
 })

@@ -88,6 +88,7 @@ onUnmounted(() => { disposed = true; observer?.disconnect(); void window.campus.
   <div class="workbench-status">
    <span v-if="task" :class="['badge',task.status==='running'?'green':'amber']">{{ stateLabels[task.status] }}</span>
    <span>{{ task ? (task.reason||'只按实际观察的播放状态推进，平台完成状态单独核对。') : browseHint }}</span>
+   <button v-if="info?.mode==='browse' && info.loginPending" class="text-button" :disabled="!!store.busy" @click="store.run({type:'view.navigate',platform:'chaoxing',action:'home'})">手机已确认，核对登录</button>
   </div>
   <div v-if="task" class="workbench-task-strip" data-testid="workbench-task-controls">
    <div class="workbench-current"><strong :title="task.chapters[task.chapterIndex]?.title">{{ task.chapters[task.chapterIndex]?.title }}</strong><span data-testid="player-observation">{{ playerLabel }} · {{ clock(task.currentTime) }} / {{ clock(task.duration) }}</span></div>

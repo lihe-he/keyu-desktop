@@ -1,7 +1,7 @@
 {
   "passed": true,
-  "at": "2026-11-04T01:53:06.963Z",
-  "executablePath": "D:\\Projects\\web项目\\campus-course-desktop\\release\\build-0.1.5\\win-unpacked\\CampusCourseDesktop.exe",
+  "at": "2026-11-05T03:01:25.820Z",
+  "executablePath": "D:\\Projects\\web项目\\campus-course-desktop\\release\\candidate-0.1.5-r2\\win-unpacked\\CampusCourseDesktop.exe",
   "isolatedVerification": true,
   "environment": {
     "packaged": true,

@@ -12,6 +12,30 @@ async function command(c:Command):Promise<any>{const r=await page.evaluate(c=>wi
 async function snapshot():Promise<Snapshot>{return page.evaluate(async()=>{const r=await window.campus.snapshot();if(!r.ok)throw Error(r.error);return r.data})}
 test.beforeEach(async()=>{await mkdir('.test-data',{recursive:true});data=await mkdtemp(join(process.cwd(),'.test-data','e2e-'));await launch()})
 test.afterEach(async()=>{await app?.close()})
+
+test('v24 signed directory import resolves the current entry without storing credentials',async()=>{
+ const a=await command({type:'account.add',platform:'chaoxing',label:'v24目录测试'})
+ await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id})
+ const [course]=(await snapshot()).courses
+ expect(course.url).toBe('https://v24.chaoxing.com/courselist/opencoursenewfy?role=3&courseId=101&clazzId=201&cpi=301')
+ expect(course.completion).toBe('unknown')
+ await command({type:'course.open',courseId:course.id})
+ expect(await command({type:'course.chapters',courseId:course.id})).toHaveLength(2)
+ // Opening from a stale course detail must not try the unsigned stored identity.
+ await expect(command({type:'course.open',courseId:course.id})).rejects.toThrow('当前账号')
+ await command({type:'view.navigate',platform:'chaoxing',action:'home'})
+ await expect.poll(async()=>command({type:'courses.refresh',accountId:a.id})).toBe(1)
+ // A normal target=_blank course link belongs in the account view, not a login popup.
+ await app.evaluate(async(_e,id)=>{await new Promise<void>(r=>setImmediate(r));const wc=(globalThis as any).__campusTest.runtime.contentsFor(id);const frame=wc.mainFrame.framesInSubtree.find((f:any)=>f.url.includes('/wfw/courselist/course3'));await frame.executeJavaScript('document.querySelector("#stuCourseList h3 a").click()')},a.id)
+ await expect.poll(async()=>app.evaluate(async(_e,id)=>{await new Promise<void>(r=>setImmediate(r));return (globalThis as any).__campusTest.runtime.contentsFor(id).getURL()},a.id)).toContain('/visit/stucoursemiddle')
+ expect(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().length)).toBe(1)
+ // Reopen the directory to exercise the supported course command once more.
+ await command({type:'view.navigate',platform:'chaoxing',action:'home'})
+ await expect.poll(async()=>command({type:'courses.refresh',accountId:a.id})).toBe(1)
+ await command({type:'course.open',courseId:course.id});await command({type:'course.chapters',courseId:course.id});await command({type:'task.add',courseId:course.id,chapterIds:[]})
+ const stored=await app.evaluate(async()=>{await new Promise<void>(r=>setImmediate(r));const s=(globalThis as any).__campusTest.store;return JSON.stringify({courses:s.courses(),tasks:s.tasks(),logs:s.logs(),notices:s.notices()})})
+ expect(stored).not.toMatch(/ckenc|space_token|synthetic-signature|synthetic-context/)
+})
 test('three platform media flows, isolation, lifecycle and persisted storage',async()=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await mkdir('reports/screenshots',{recursive:true});await page.screenshot({path:'reports/screenshots/01-home.png'});
  expect((await snapshot()).accounts).toHaveLength(0)
@@ -86,8 +110,10 @@ test('rejects forbidden commands and navigation; clearing an account cascades it
  // Synthetic navigation regression only: never confirms a real QR login.
  const loginReturn=await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));const wc=(globalThis as any).__campusTest.runtime.contentsFor(id);return new URL(wc.getURL()).searchParams.get('refer')},a.id)
  expect(loginReturn).toBe(platformOf('chaoxing').courses)
- await app.evaluate(async(_e,{id,target})=>{await new Promise<void>(resolve=>setImmediate(resolve));const wc=(globalThis as any).__campusTest.runtime.contentsFor(id);await wc.executeJavaScript('location.href='+JSON.stringify(target))},{id:a.id,target:loginReturn})
+ await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'学习工作台',exact:true}).click()
+ await page.getByRole('button',{name:'手机已确认，核对登录',exact:true}).click()
  await expect.poll(async()=>app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));return (globalThis as any).__campusTest.runtime.contentsFor(id).getURL()},a.id)).toBe(loginReturn)
+ await expect(page.getByRole('button',{name:'手机已确认，核对登录',exact:true})).toHaveCount(0)
  expect((await snapshot()).notices.some(n=>n.body.includes('阻止'))).toBe(false)
  await app.evaluate(async(_e,id)=>{await new Promise<void>(resolve=>setImmediate(resolve));await (globalThis as any).__campusTest.runtime.contentsFor(id).executeJavaScript('location.href="http://i.mooc.chaoxing.com/space/index"')},a.id)
  await expect.poll(async()=>(await snapshot()).notices.some(n=>n.body.includes('阻止'))).toBe(true)

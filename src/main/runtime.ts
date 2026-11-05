@@ -1,11 +1,11 @@
 import { BrowserWindow, WebContentsView, session, type Session, type WebContents } from 'electron'
 import { join } from 'node:path'
-import type { Account, Task, Chapter, PlatformId, RuntimeInfo, Bounds, Observation } from '../shared/contracts'
+import type { Account, Course, Task, Chapter, PlatformId, RuntimeInfo, Bounds, Observation } from '../shared/contracts'
 import { platformOf } from '../shared/platforms'
-import { isAllowedUrl, partitionFor, safeUrl } from './core/security'
+import { isAllowedUrl, isDirectoryCourse, partitionFor, safeUrl } from './core/security'
 import type { PlaybackRuntime } from './core/engine'
 import { PlatformAdapter, within } from './adapters/adapter'
-interface Entry { view: WebContentsView; accountId: string; platform: PlatformId; taskId: string|null; generation: number; mode:'browse'|'task'; visible:boolean; allowedToPlay:boolean; expectedUrl:string; navigationChanged:boolean }
+interface Entry { view: WebContentsView; accountId: string; platform: PlatformId; taskId: string|null; generation: number; mode:'browse'|'task'; visible:boolean; allowedToPlay:boolean; expectedUrl:string; navigationChanged:boolean; browsingCourseId?:string }
 export class BrowserRuntime implements PlaybackRuntime {
  private entries=new Map<PlatformId,Entry>();private sessions=new Map<string,Session>();private popups=new Map<string,Set<BrowserWindow>>();private displayed:PlatformId|null=null;private lastBounds:Bounds|null=null
  constructor(private window: BrowserWindow, private account:(id:string)=>Account, private changed:()=>void, private warn:(message:string)=>void, private fixtureSetup?: (ses:Session,account:Account)=>void){}
@@ -25,12 +25,19 @@ export class BrowserRuntime implements PlaybackRuntime {
   this.fixtureSetup?.(ses,account);return ses
  }
  private guard(contents:WebContents,account:Account,isPopup=false):void {
-  const block=(event:Electron.Event,url:string)=>{if(!isAllowedUrl(account.platform,url)){event.preventDefault();this.warn('已阻止未验证的页面跳转。如学校使用特殊登录入口，需要先补充兼容性验证。')}}
+  const block=(event:Electron.Event,url:string)=>{if(!isAllowedUrl(account.platform,url)){event.preventDefault();this.warn(url.startsWith('http:')?'已阻止平台跳转至不安全的 HTTP 页面。若已在手机确认，请点“手机已确认，核对登录”，检查个人空间，无需先重复扫码。':'已阻止未验证的页面跳转。如学校使用特殊登录入口，需要先补充兼容性验证。')}}
   contents.on('will-frame-navigate',event=>block(event,event.url));contents.on('will-navigate',block);contents.on('will-redirect',block)
+  contents.on('did-fail-load',(_event,code,_description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3)this.warn('平台页面加载失败（错误代码 '+code+'）。请检查网络后重试；登录是否成功需在个人空间核对。')})
   contents.setWindowOpenHandler(({url})=>{
    if(!isAllowedUrl(account.platform,url)){this.warn('已阻止打开平台名单之外的窗口。');return {action:'deny'}}
    // Only browsing/login can open a controlled authentication window.
    if(isPopup||this.entries.get(account.platform)?.mode==='task'){this.warn('学习任务请求新窗口，请暂停任务后在工作台人工处理。');return {action:'deny'}}
+   // A directory course is a normal course page, not an authentication popup.
+   // Keep it in the scheduled account's view; never persist the signed address.
+   const entry=this.entries.get(account.platform)
+   if(entry?.accountId===account.id&&isDirectoryCourse(account.platform,url)){
+    entry.browsingCourseId=undefined;void this.load(entry,url).catch(()=>this.warn('课程入口未能加载，请返回“我学的课”后重试。'));return {action:'deny'}
+   }
    const existingPopup=[...(this.popups.get(account.id)??[])].find(w=>!w.isDestroyed());if(existingPopup){existingPopup.show();existingPopup.focus();return {action:'deny'}}
    const popup=new BrowserWindow({width:960,height:740,parent:this.window,show:false,autoHideMenuBar:true,webPreferences:{session:this.getSession(account),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:join(__dirname,'../preload/platform.js')}})
    const set=this.popups.get(account.id)??new Set<BrowserWindow>();set.add(popup);this.popups.set(account.id,set)
@@ -49,6 +56,7 @@ export class BrowserRuntime implements PlaybackRuntime {
   const view=new WebContentsView({webPreferences:{session:this.getSession(account),preload:join(__dirname,'../preload/platform.js'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,backgroundThrottling:true,allowRunningInsecureContent:false}})
   const entry:Entry={view,accountId:account.id,platform:account.platform,taskId:task?.id??null,generation:task?.generation??0,mode,visible:false,allowedToPlay:false,expectedUrl:'',navigationChanged:false}
   this.entries.set(account.platform,entry);this.window.contentView.addChildView(view);view.setVisible(false);view.setBounds({x:0,y:0,width:1000,height:650});view.webContents.setAudioMuted(true);this.guard(view.webContents,account)
+  view.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame)=>{if(isMainFrame)entry.browsingCourseId=undefined})
   view.webContents.on('did-navigate',(_event,url)=>{if(entry.mode==='task'&&entry.expectedUrl&&url!==entry.expectedUrl)entry.navigationChanged=true;this.changed()})
   view.webContents.on('did-navigate-in-page',(_event,url,isMainFrame)=>{if(isMainFrame&&entry.mode==='task'&&entry.expectedUrl&&url!==entry.expectedUrl)entry.navigationChanged=true;this.changed()})
   view.webContents.on('render-process-gone',()=>{entry.allowedToPlay=false;this.warn('平台页面进程已退出，对应任务将在状态检查时暂停。');this.changed()})
@@ -64,7 +72,28 @@ export class BrowserRuntime implements PlaybackRuntime {
   const existing=this.entries.get(account.platform)
   if(existing?.mode==='task')throw new Error('该平台正在保留学习任务。请先暂停或取消任务，再浏览其他账号或课程。')
   const entry=existing?.accountId===account.id?existing:this.create(account,'browse')
+  entry.browsingCourseId=undefined
   await this.load(entry,url);this.changed()
+ }
+ courseIsOpen(accountId:string,courseId:string):boolean {
+  const entry=this.entries.get(this.account(accountId).platform)
+  return !!entry&&entry.accountId===accountId&&entry.mode==='browse'&&entry.browsingCourseId===courseId&&!entry.view.webContents.isDestroyed()
+ }
+ async browseCourse(account:Account,course:Course):Promise<void>{
+  const current=this.entries.get(account.platform)
+  if(current?.mode==='task')throw new Error('请先暂停该平台任务，再打开课程。')
+  const contents=this.contentsForOrCreate(account,course),entryBefore=this.entries.get(account.platform),sourceUrl=contents.getURL()
+  const url=await this.adapter(account.platform).resolveCourseUrl(contents,course)
+  if(this.entries.get(account.platform)!==entryBefore||contents.isDestroyed()||contents.getURL()!==sourceUrl)throw new Error('账号页面已改变，请重试。')
+  await this.browse(account,url)
+  const entry=this.entries.get(account.platform)
+  if(entry?.accountId===account.id)entry.browsingCourseId=course.id
+ }
+ private contentsForOrCreate(account:Account,course:Course):WebContents {
+  const entry=this.entries.get(account.platform)
+  if(entry?.accountId===account.id&&!entry.view.webContents.isDestroyed())return entry.view.webContents
+  if(isDirectoryCourse(account.platform,course.url))throw new Error('请先打开此账号，在学习通“课程 → 我学的课”刷新后重试。')
+  return this.create(account,'browse').view.webContents
  }
  async open(task:Task,chapter:Chapter):Promise<void>{
   const account=this.account(task.accountId);const previous=this.entries.get(task.platform)
@@ -126,6 +155,7 @@ export class BrowserRuntime implements PlaybackRuntime {
  setAudio(muteAll:boolean,audible:PlatformId):void{for(const e of this.entries.values())if(!e.view.webContents.isDestroyed())e.view.webContents.setAudioMuted(muteAll||e.platform!==audible||!e.allowedToPlay)}
  async navigate(platform:PlatformId,action:'back'|'reload'|'home'):Promise<void>{
   const e=this.entries.get(platform);if(!e)throw new Error('请先打开账号或课程。');if(e.mode==='task')throw new Error('请先暂停任务，避免导航导致章节混淆。')
+  e.browsingCourseId=undefined
   if(action==='home')await this.load(e,platformOf(platform).courses)
   else if(action==='reload')e.view.webContents.reload()
   else if(e.view.webContents.navigationHistory.canGoBack())e.view.webContents.navigationHistory.goBack()
@@ -141,7 +171,7 @@ export class BrowserRuntime implements PlaybackRuntime {
   for(const popup of this.popups.get(account.id)??[])popup.destroy();this.popups.delete(account.id)
   const ses=this.getSession(account);await ses.clearStorageData();await ses.clearCache();await ses.clearAuthCache();await ses.closeAllConnections()
  }
- info():RuntimeInfo[]{return [...this.entries.values()].map(e=>({platform:e.platform,taskId:e.taskId,accountId:e.accountId,mode:e.mode,visible:e.visible,url:safeUrl(e.view.webContents.isDestroyed()?'':e.view.webContents.getURL()),title:platformOf(e.platform).name}))}
+ info():RuntimeInfo[]{return [...this.entries.values()].map(e=>{const url=e.view.webContents.isDestroyed()?'':e.view.webContents.getURL();return {platform:e.platform,taskId:e.taskId,accountId:e.accountId,mode:e.mode,visible:e.visible,url:safeUrl(url),title:platformOf(e.platform).name,loginPending:e.platform==='chaoxing'&&/^https:\/\/passport2\.chaoxing\.com\/login(?:[?#]|$)/.test(url)}})}
  async guardBrowsing():Promise<void>{await Promise.all([...this.entries.values()].filter(e=>!e.allowedToPlay&&!e.view.webContents.isDestroyed()).map(e=>this.adapter(e.platform).operate(e.view.webContents,'pause').catch(()=>{})))}
  closeAll():void{for(const p of [...this.entries.keys()])this.close(p);for(const popups of this.popups.values())for(const p of popups)p.destroy();this.popups.clear()}
 }

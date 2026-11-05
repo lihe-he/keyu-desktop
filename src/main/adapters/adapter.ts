@@ -4,7 +4,7 @@ import type { Account, Course, Chapter, PlatformId, Observation, Task } from '..
 import type { PageProbe, ProbeOperation } from './types'
 import { recipes } from './recipes'
 import { probeDocument } from './probe'
-import { fingerprint, isAllowedUrl, isPersistableCourseUrl } from '../core/security'
+import { fingerprint, isAllowedUrl, isPersistableCourseUrl, courseIdentityUrl, isDirectoryCourse } from '../core/security'
 const targetSchema=z.object({selector:z.string().max(120),text:z.string().max(180),index:z.number().int().min(0).max(1000),frameUrl:z.string().max(8192)})
 const item=z.object({title:z.string().min(1).max(180),url:z.string().max(8192),completion:z.enum(['complete','incomplete','unknown']),locked:z.boolean(),kind:z.enum(['video','manual','unknown']),target:targetSchema.optional()})
 const schema=z.object({activeChapter:z.string().max(180).nullable(),url:z.string().max(8192),title:z.string().max(180),login:z.enum(['unknown','logged-in','logged-out','attention']),issue:z.string().max(300).nullable(),courses:z.array(item).max(300),chapters:z.array(item).max(500),completion:z.enum(['complete','incomplete','unknown']),media:z.object({state:z.enum(['playing','paused','ended','buffering']),currentTime:z.number().min(0),duration:z.number().min(0),error:z.boolean()}).nullable()})
@@ -35,11 +35,21 @@ export class PlatformAdapter {
  async courses(contents: WebContents, account: Account): Promise<Course[]> {
   const probes=await this.read(contents);const issue=probes.find(p=>p.issue)?.issue;if(issue)throw new Error(issue)
   const output=new Map<string,Course>()
-  for(const p of probes)for(const c of p.courses)if(isPersistableCourseUrl(this.platform,c.url)){const id=fingerprint(account.id+'|'+c.url);output.set(id,{id,accountId:account.id,platform:this.platform,title:c.title,url:c.url,updatedAt:Date.now(),completion:c.completion})}
+  for(const p of probes)for(const c of p.courses){const url=courseIdentityUrl(this.platform,c.url);if(url){const id=fingerprint(account.id+'|'+url);output.set(id,{id,accountId:account.id,platform:this.platform,title:c.title,url,updatedAt:Date.now(),completion:c.completion})}}
   if(!output.size)throw new Error(this.platform==='chaoxing'
    ? '未识别到个人课程。请在工作台内点学习通自己的“课程”，看到“我学的课”和课程封面后再刷新；课表不是网课目录。如果已经在该页面，说明当前结构仍需适配。'
    : '未可靠识别到个人课程。请在工作台打开“我的课程”后重试；该页面可能尚未适配。')
   return [...output.values()]
+ }
+ async resolveCourseUrl(contents:WebContents,course:Course):Promise<string>{
+  if(!isDirectoryCourse(this.platform,course.url)){
+   if(!isPersistableCourseUrl(this.platform,course.url))throw new Error('课程入口含有临时凭据，请重新读取课程。')
+   return course.url
+  }
+  const probes=await this.read(contents);const issue=probes.find(p=>p.issue)?.issue;if(issue)throw new Error(issue)
+  const matches=[...new Set(probes.flatMap(p=>p.courses).filter(c=>courseIdentityUrl(this.platform,c.url)===course.url).map(c=>c.url))]
+  if(matches.length!==1)throw new Error('请在工作台打开学习通“课程 → 我学的课”，刷新课程后重试。此课程需从当前账号的目录取得临时入口，应用不会保存或复用旧签名。')
+  return matches[0]
  }
  async chapters(contents: WebContents, course: Course): Promise<Chapter[]> {
   const probes=await this.read(contents);const issue=probes.find(p=>p.issue)?.issue;if(issue)throw new Error(issue)

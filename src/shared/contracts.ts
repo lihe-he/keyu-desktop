@@ -13,7 +13,7 @@ export interface StudyInterval { taskId: string; platform: PlatformId; start: nu
 export interface Notice { id: string; level: 'info' | 'warning'; title: string; body: string; createdAt: number; read: boolean }
 export interface Settings { muteAll: boolean; audiblePlatform: PlatformId; closeToTray: boolean; reminderEnabled: boolean; reminderTime: string; breakEnabled: boolean; breakMinutes: number; lastReminderDate: string; reminderCursorAt: number; lastBreakAt: number }
 export interface PlatformInfo { id: PlatformId; name: string; short: string; color: string; home: string; courses: string; roots: string[]; scope: string; verification: 'unverified'; note: string }
-export interface RuntimeInfo { platform: PlatformId; taskId: string | null; accountId: string; mode: 'browse' | 'task'; visible: boolean; url: string; title: string }
+export interface RuntimeInfo { platform: PlatformId; taskId: string | null; accountId: string; mode: 'browse' | 'task'; visible: boolean; url: string; title: string; loginPending?: boolean }
 export interface Snapshot { sequence: number; accounts: Account[]; courses: Course[]; tasks: Task[]; notices: Notice[]; settings: Settings; platforms: PlatformInfo[]; views: RuntimeInfo[]; stats: { playbackMs: number; elapsedMs: number; todayFinished: number }; version: string; fixtureMode: boolean; lifecycle: 'ready' | 'suspending' | 'quitting' }
 export type Command =
  | { type: 'account.add'; platform: PlatformId; label: string }
