@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { WebContents } from 'electron'
+import type { Chapter, Task } from '../../src/shared/contracts'
 import { PlatformAdapter } from '../../src/main/adapters/adapter'
 import type { PageProbe } from '../../src/main/adapters/types'
-import { makeAccount } from './helpers'
+import { makeAccount, makeCourse } from './helpers'
 
 const identity='https://v24.chaoxing.com/courselist/opencoursenewfy?role=3&courseId=101&clazzId=201&cpi=301'
 const page=(urls=[identity+'&ckenc=synthetic-first']):PageProbe=>({url:'https://v24.chaoxing.com/wfw/courselist/course3?space_token=synthetic-context',title:'脱敏课程目录',login:'unknown',issue:null,chapters:[],activeChapter:null,completion:'unknown',media:null,courses:urls.map(url=>({title:'脱敏课程甲',url,completion:'unknown',locked:false,kind:'unknown'}))})
@@ -26,5 +27,64 @@ describe('signed course entry resolution',()=>{
  it('refuses multiple competing entries instead of guessing a signature',async()=>{
   const a=new PlatformAdapter('chaoxing');vi.spyOn(a,'read').mockResolvedValue([page()]);const [course]=await a.courses(contents,makeAccount())
   vi.mocked(a.read).mockResolvedValue([page([identity+'&ckenc=synthetic-a',identity+'&ckenc=synthetic-b'])]);await expect(a.resolveCourseUrl(contents,course)).rejects.toThrow('当前账号')
+ })
+})
+
+describe('chapter identity and observation',()=>{
+ const course=makeCourse()
+ const chapter=(index:number):Chapter=>({id:'chapter-'+index,courseId:course.id,title:'视频 导论',url:course.url,kind:'video',locked:false,completion:'unknown',target:{selector:'.chapter_item',text:'视频 导论',index,frameUrl:course.url}})
+ const task=(chapters=[chapter(0),chapter(1)]):Task=>({id:'task',platform:course.platform,accountId:course.accountId,courseId:course.id,title:course.title,chapterIds:chapters.map(c=>c.id),chapters,chapterIndex:0,status:'running',reason:null,createdAt:1,updatedAt:1,position:1,currentTime:0,duration:0,playbackEnded:false,platformCompletion:'unknown',generation:1})
+ const observedContents={getURL:()=>course.url} as WebContents
+ const probe=(activeIndex=0):PageProbe=>({...page(),url:course.url,courses:[],chapters:[],activeChapter:'视频 导论',activeTarget:chapter(activeIndex).target,completion:'complete',media:{state:'playing',currentTime:3,duration:10,error:false}})
+ it('keeps same-title in-page chapter targets distinct and stable across reads',async()=>{
+  const a=new PlatformAdapter('chaoxing');vi.spyOn(a,'read').mockResolvedValue([{...probe(),chapters:[chapter(0),chapter(1)]}])
+  const first=await a.chapters(contents,course),second=await a.chapters(contents,course)
+  expect(first).toHaveLength(2);expect(new Set(first.map(c=>c.id)).size).toBe(2)
+  expect(first.map(c=>c.id)).toEqual(second.map(c=>c.id));expect(first.map(c=>c.target?.index)).toEqual([0,1])
+ })
+ it('continues to reject signed target frame URLs even when chapter links are stable',async()=>{
+  const a=new PlatformAdapter('chaoxing'),c=chapter(0);c.target!.frameUrl=course.url+'?token=synthetic-context'
+  vi.spyOn(a,'read').mockResolvedValue([{...probe(),chapters:[c]}])
+  await expect(a.chapters(contents,course)).rejects.toThrow('未可靠识别章节')
+ })
+ it('rejects the wrong active target even when its caption matches',async()=>{
+  const a=new PlatformAdapter('chaoxing');vi.spyOn(a,'read').mockResolvedValue([probe(1)])
+  const result=await a.observation(observedContents,task())
+  expect(result.issue).toContain('章节发生变化');expect(result.completion).toBe('unknown')
+ })
+ it('accepts the selected active target among same-title chapters',async()=>{
+  const a=new PlatformAdapter('chaoxing');vi.spyOn(a,'read').mockResolvedValue([probe(0)])
+  const result=await a.observation(observedContents,task())
+  expect(result.issue).toBeNull();expect(result.completion).toBe('complete')
+ })
+ it('accepts a direct chapter target on the currently loaded final page',async()=>{
+  const a=new PlatformAdapter('chaoxing'),c=chapter(0);c.url=course.url+'?chapter=0'
+  const finalUrl=course.url+'?chapter=0&view=player',p=probe();p.url=finalUrl;p.activeTarget={...c.target!,frameUrl:finalUrl}
+  vi.spyOn(a,'read').mockResolvedValue([p])
+  expect((await a.observation({getURL:()=>finalUrl} as WebContents,task([c]))).issue).toBeNull()
+ })
+ it('requires target evidence when legacy probes cannot distinguish same-title chapters',async()=>{
+  const a=new PlatformAdapter('chaoxing'),legacy=probe();delete legacy.activeTarget;vi.spyOn(a,'read').mockResolvedValue([legacy])
+  expect((await a.observation(observedContents,task())).issue).toContain('章节发生变化')
+ })
+ it('retains unique-title legacy probe compatibility',async()=>{
+  const a=new PlatformAdapter('chaoxing'),legacy=probe();delete legacy.activeTarget;vi.spyOn(a,'read').mockResolvedValue([legacy])
+  expect((await a.observation(observedContents,task([chapter(0)]))).issue).toBeNull()
+ })
+ it('does not select completion from competing active frames',async()=>{
+  const a=new PlatformAdapter('chaoxing');vi.spyOn(a,'read').mockResolvedValue([probe(),{...probe(),media:null}])
+  const result=await a.observation(observedContents,task())
+  expect(result.issue).toContain('多个当前章节');expect(result.completion).toBe('unknown')
+ })
+ it('preserves an explicit ambiguous-current issue when no active target is chosen',async()=>{
+  const a=new PlatformAdapter('chaoxing');vi.spyOn(a,'read').mockResolvedValue([{...probe(),activeChapter:null,activeTarget:null,issue:'页面存在多个当前章节标记，无法可靠确认所选章节。'}])
+  const result=await a.observation(observedContents,task())
+  expect(result.issue).toContain('多个当前章节');expect(result.completion).toBe('unknown')
+ })
+ it('validates a legacy probe payload without requiring the new target field',async()=>{
+  const a=new PlatformAdapter('chaoxing'),legacy=probe();delete legacy.activeTarget
+  const frame={url:course.url,detached:false},wc={isDestroyed:()=>false,mainFrame:frame,executeJavaScriptInIsolatedWorld:vi.fn().mockResolvedValue(legacy)}
+  Object.assign(frame,{framesInSubtree:[frame]})
+  expect(await a.read(wc as unknown as WebContents)).toEqual([legacy])
  })
 })

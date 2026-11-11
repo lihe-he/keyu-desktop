@@ -36,3 +36,110 @@ it('only explicit completion is complete',async()=>{document.body.innerHTML='<a 
 it('refuses stale click targets',async()=>{document.body.innerHTML='<a class="chapter_item">changed</a>';await expect(probeDocument(recipes.chaoxing,'click',{selector:'.chapter_item',text:'original',index:0,frameUrl:location.href})).rejects.toThrow('改变')})
 it('refuses JavaScript chapter links',async()=>{document.body.innerHTML='<a class="chapter_item" href="javascript:alert(1)">视频</a>';await expect(probeDocument(recipes.chaoxing,'click',{selector:'.chapter_item',text:'视频',index:0,frameUrl:location.href})).rejects.toThrow('手动')})
 it('pauses audio and video without manipulating progress',async()=>{const v=media();document.body.append(document.createElement('audio'));await probeDocument(recipes.chaoxing,'pause');expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(2);expect(v.currentTime).toBe(3)})
+
+describe('chapter control identity and visible status',()=>{
+ it('keeps DOM order across selector variants and excludes parent groups',async()=>{
+  document.body.innerHTML='<section class="chapter_unit" data-completion="complete"><a class="posCatalog_name" href="https://www.chaoxing.com/knowledge/cards?chapterId=1">视频 第一节</a><a class="chapter_item" href="https://www.chaoxing.com/knowledge/cards?chapterId=2">视频 第二节</a></section>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.chapters.map(c=>c.title)).toEqual(['视频 第一节','视频 第二节'])
+  expect(r.chapters.map(c=>c.completion)).toEqual(['unknown','unknown'])
+  expect(r.chapters.map(c=>c.target?.selector)).toEqual(['.posCatalog_name','.chapter_item'])
+ })
+ it('deduplicates overlapping selectors for the same control',async()=>{
+  document.body.innerHTML='<a class="chapter_item posCatalog_name" href="https://www.chaoxing.com/knowledge/cards?chapterId=1">视频 第一节</a>'
+  expect((await probeDocument(recipes.chaoxing)).chapters).toHaveLength(1)
+ })
+ it('preserves different in-page controls with the same title and URL',async()=>{
+  document.body.innerHTML='<button class="chapter_item">视频 导论</button><button class="chapter_item">视频 导论</button>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.chapters).toHaveLength(2);expect(r.chapters.map(c=>c.target?.index)).toEqual([0,1])
+  expect(r.chapters[0].url).toBe(r.chapters[1].url)
+ })
+ it('inherits one chapter row status and lock while retaining its leaf title',async()=>{
+  document.body.innerHTML='<a class="chapter_item current" aria-disabled="true"><span class="posCatalog_name">视频 第一节</span><i class="status">未完成</i></a>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.chapters).toHaveLength(1);expect(r.chapters[0]).toMatchObject({title:'视频 第一节',completion:'incomplete',locked:true})
+  expect(r.activeChapter).toBe('视频 第一节');expect(r.activeTarget).toEqual(r.chapters[0].target)
+  await expect(probeDocument(recipes.chaoxing,'click',r.chapters[0].target)).rejects.toThrow('解锁状态')
+ })
+ it('retains an intermediate chapter row active marker under a single-item wrapper',async()=>{
+  document.body.innerHTML='<section class="chapter_unit"><div class="chapter_item current"><span class="posCatalog_name">视频 第一节</span></div></section>'
+  expect((await probeDocument(recipes.chaoxing)).activeChapter).toBe('视频 第一节')
+ })
+ it('keeps one action and its row status when an anchor contains repeated labels',async()=>{
+  document.body.innerHTML='<a class="chapter_item current" aria-disabled="true" href="https://www.chaoxing.com/course/1"><span class="posCatalog_name">视频 第一节</span><span class="posCatalog_name">视频 第一节</span><i class="status">未完成</i></a>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.chapters).toHaveLength(1);expect(r.chapters[0]).toMatchObject({completion:'incomplete',locked:true})
+  expect(r.activeChapter).toBe('视频 第一节')
+ })
+ it('ignores a hidden completed marker on a visibly incomplete chapter',async()=>{
+  document.body.innerHTML='<a class="chapter_item current" title="未完成">视频 第一节<i style="display:none" data-completion="complete"></i></a>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.chapters[0].completion).toBe('incomplete');expect(r.completion).toBe('incomplete')
+ })
+ it('keeps conflicting visible completion markers unknown',async()=>{
+  document.body.innerHTML='<a class="chapter_item current" title="未完成" data-completion="complete">视频 第一节</a>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.chapters[0].completion).toBe('unknown');expect(r.completion).toBe('unknown')
+ })
+ it('does not use hidden text status as completion evidence',async()=>{
+  document.body.innerHTML='<a class="chapter_item">视频 第一节<i class="status" style="display:none">已完成</i></a>'
+  expect((await probeDocument(recipes.chaoxing)).chapters[0].completion).toBe('unknown')
+ })
+ it('ignores current navigation and a current parent group',async()=>{
+  document.body.innerHTML='<nav aria-current="true">我的课程</nav><section class="chapter_unit current"><a class="chapter_item">视频 第一节</a><a class="chapter_item">视频 第二节</a></section>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.activeChapter).toBeNull();expect(r.activeTarget).toBeNull()
+ })
+ it('reads candidate active markers on the supported videoItem variant',async()=>{
+  document.body.innerHTML='<button class="videoItem active">导论</button>'
+  const r=await probeDocument(recipes.zhihuishu)
+  expect(r.activeChapter).toBe('导论');expect(r.activeTarget).toMatchObject({selector:'.videoItem',index:0})
+ })
+ it('keeps the active position for chapters with equal titles',async()=>{
+  document.body.innerHTML='<button class="chapter_item">视频 导论</button><button class="chapter_item" aria-current="true">视频 导论</button>'
+  expect((await probeDocument(recipes.chaoxing)).activeTarget).toMatchObject({selector:'.chapter_item',text:'视频 导论',index:1})
+ })
+ it('reports multiple active chapters without choosing or claiming completion',async()=>{
+  document.body.innerHTML='<button class="chapter_item current" data-completion="complete">视频 导论</button><button class="chapter_item" aria-current="true">视频 导论</button>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.issue).toContain('多个当前章节');expect(r.activeChapter).toBeNull();expect(r.activeTarget).toBeNull();expect(r.completion).toBe('unknown')
+ })
+ it('refuses an obsolete group target after finding individual controls',async()=>{
+  document.body.innerHTML='<section class="chapter_unit"><a class="chapter_item">视频 第一节</a><a class="chapter_item">视频 第二节</a></section>'
+  await expect(probeDocument(recipes.chaoxing,'click',{selector:'.chapter_unit',text:'视频 第一节视频 第二节',index:0,frameUrl:location.href})).rejects.toThrow('改变')
+ })
+ it.each(['aria-disabled="true"','data-locked="true"'])('inherits a multi-chapter group restriction: %s',async restriction=>{
+  document.body.innerHTML='<section class="chapter_unit" '+restriction+'><a class="chapter_item">视频 第一节</a><a class="chapter_item">视频 第二节</a></section>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.chapters).toHaveLength(2);expect(r.chapters.map(c=>c.locked)).toEqual([true,true])
+  expect(r.activeChapter).toBeNull();expect(r.chapters.map(c=>c.completion)).toEqual(['unknown','unknown'])
+ })
+ it.each(['disabled','data-locked="true"','title="尚未开放"','aria-label="请先完成前置任务"'])('respects a noncandidate wrapper restriction: %s',async restriction=>{
+  document.body.innerHTML='<div '+restriction+'><a class="chapter_item">视频 第一节</a><a class="chapter_item">视频 第二节</a></div>'
+  expect((await probeDocument(recipes.chaoxing)).chapters.map(c=>c.locked)).toEqual([true,true])
+ })
+ it('does not transfer a sibling restriction or lock text to an unlocked chapter',async()=>{
+  document.body.innerHTML='<section class="chapter_unit"><a class="chapter_item">视频 第一节</a><a class="chapter_item" data-locked="true">视频 第二节 未解锁</a></section>'
+  expect((await probeDocument(recipes.chaoxing)).chapters.map(c=>c.locked)).toEqual([false,true])
+ })
+ it('does not read a hidden sibling restriction through an ancestor context',async()=>{
+  document.body.innerHTML='<section class="chapter_unit"><a class="chapter_item">视频 第一节</a><a class="chapter_item" style="display:none" data-locked="true">视频 第二节 未解锁</a></section>'
+  const r=await probeDocument(recipes.chaoxing)
+  expect(r.chapters).toHaveLength(1);expect(r.chapters[0].locked).toBe(false)
+ })
+ it('retains one chapter row visible text restriction outside its title leaf',async()=>{
+  document.body.innerHTML='<a class="chapter_item"><span class="posCatalog_name">视频</span><i class="status">未解锁</i></a>'
+  const r=await probeDocument(recipes.chaoxing),click=vi.spyOn(document.querySelector('.posCatalog_name') as HTMLElement,'click').mockImplementation(()=>{})
+  expect(r.chapters).toHaveLength(1);expect(r.chapters[0]).toMatchObject({title:'视频',locked:true})
+  await expect(probeDocument(recipes.chaoxing,'click',r.chapters[0].target)).rejects.toThrow('解锁状态')
+  expect(click).not.toHaveBeenCalled()
+ })
+ it.each(['section class="chapter_unit"','div'])('refuses a stale click when an ancestor becomes restricted: %s',async wrapper=>{
+  document.body.innerHTML='<'+wrapper+'><a class="chapter_item">视频 第一节</a><a class="chapter_item">视频 第二节</a></'+wrapper.split(' ')[0]+'>'
+  const r=await probeDocument(recipes.chaoxing),click=vi.spyOn(document.querySelector('a') as HTMLElement,'click').mockImplementation(()=>{})
+  document.body.firstElementChild!.setAttribute('aria-disabled','true')
+  await expect(probeDocument(recipes.chaoxing,'click',r.chapters[0].target)).rejects.toThrow('解锁状态')
+  expect(click).not.toHaveBeenCalled()
+ })
+})

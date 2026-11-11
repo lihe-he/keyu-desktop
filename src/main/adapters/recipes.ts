@@ -2,7 +2,7 @@ import type { Recipe } from './types'
 import type { PlatformId } from '../../shared/contracts'
 // Candidate DOM recipes, not certified selectors. Every candidate must pass structural
 // checks and a real-course acceptance run before the platform is declared compatible.
-const base = { completedSelectors: ['[data-completion="complete"]'], lockSelectors: ['[aria-disabled="true"]','[disabled]','[data-locked="true"]'], loggedInSelectors: ['a[href*="logout"]','a[href*="signout"]'] }
+const base = { completedSelectors: ['[data-completion="complete"]'], lockSelectors: ['[aria-disabled="true"]','[disabled]','[data-locked="true"]'], loggedInSelectors: ['a[href*="logout"]','a[href*="signout"]'], activeChapterSelectors: ['[aria-current="true"]','.current','.active'] }
 // Observed in the personal "我学的课" iframe. Use heading links, not the
 // duplicate cover / "课程已结束" links, and never persist the iframe's SSO URL.
 const chaoxingPersonalCourse = '#courseList :is(h1,h2,h3,h4,h5,h6,[role="heading"]) a[href*="/visit/stucoursemiddle"]'

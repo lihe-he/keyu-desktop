@@ -7,7 +7,7 @@ import { probeDocument } from './probe'
 import { fingerprint, isAllowedUrl, isPersistableCourseUrl, courseIdentityUrl, isDirectoryCourse } from '../core/security'
 const targetSchema=z.object({selector:z.string().max(120),text:z.string().max(180),index:z.number().int().min(0).max(1000),frameUrl:z.string().max(8192)})
 const item=z.object({title:z.string().min(1).max(180),url:z.string().max(8192),completion:z.enum(['complete','incomplete','unknown']),locked:z.boolean(),kind:z.enum(['video','manual','unknown']),target:targetSchema.optional()})
-const schema=z.object({activeChapter:z.string().max(180).nullable(),url:z.string().max(8192),title:z.string().max(180),login:z.enum(['unknown','logged-in','logged-out','attention']),issue:z.string().max(300).nullable(),courses:z.array(item).max(300),chapters:z.array(item).max(500),completion:z.enum(['complete','incomplete','unknown']),media:z.object({state:z.enum(['playing','paused','ended','buffering']),currentTime:z.number().min(0),duration:z.number().min(0),error:z.boolean()}).nullable()})
+const schema=z.object({activeChapter:z.string().max(180).nullable(),activeTarget:targetSchema.nullable().optional(),url:z.string().max(8192),title:z.string().max(180),login:z.enum(['unknown','logged-in','logged-out','attention']),issue:z.string().max(300).nullable(),courses:z.array(item).max(300),chapters:z.array(item).max(500),completion:z.enum(['complete','incomplete','unknown']),media:z.object({state:z.enum(['playing','paused','ended','buffering']),currentTime:z.number().min(0),duration:z.number().min(0),error:z.boolean()}).nullable()})
 export async function within<T>(promise: Promise<T>, ms=7000): Promise<T> { let timer:ReturnType<typeof setTimeout>;return Promise.race([promise,new Promise<T>((_,reject)=>{timer=setTimeout(()=>reject(new Error('页面响应超时，请检查网络或人工刷新。')),ms)})]).finally(()=>clearTimeout(timer)) }
 export class PlatformAdapter {
  constructor(readonly platform: PlatformId) {}
@@ -54,7 +54,7 @@ export class PlatformAdapter {
  async chapters(contents: WebContents, course: Course): Promise<Chapter[]> {
   const probes=await this.read(contents);const issue=probes.find(p=>p.issue)?.issue;if(issue)throw new Error(issue)
   const output=new Map<string,Chapter>()
-  for(const p of probes)for(const c of p.chapters)if(isPersistableCourseUrl(this.platform,c.url)&&(!c.target||isPersistableCourseUrl(this.platform,c.target.frameUrl))){const id=fingerprint(course.id+'|'+c.title+'|'+c.url);if(!output.has(id))output.set(id,{id,courseId:course.id,title:c.title,url:c.url,kind:c.kind,locked:c.locked,completion:c.completion,target:c.target})}
+  for(const p of probes)for(const c of p.chapters)if(isPersistableCourseUrl(this.platform,c.url)&&(!c.target||isPersistableCourseUrl(this.platform,c.target.frameUrl))){const id=fingerprint(JSON.stringify([course.id,c.title,c.url,c.target?.selector??'',c.target?.index??null,c.target?.frameUrl??'']));if(!output.has(id))output.set(id,{id,courseId:course.id,title:c.title,url:c.url,kind:c.kind,locked:c.locked,completion:c.completion,target:c.target})}
   if(!output.size)throw new Error('未可靠识别章节。请打开课程章节目录；当前结构可能尚未适配。')
   return [...output.values()]
  }
@@ -64,9 +64,17 @@ export class PlatformAdapter {
   if(mediaPages.length>1)issue='页面存在多个播放器，无法可靠确认当前章节。'
   if(current?.media?.error)issue='播放器报告错误，请检查网络或课程访问权限。'
   const active=probes.filter(p=>p.activeChapter);const expected=chapter.target?.text??chapter.title
-  if(active.some(p=>p.activeChapter!==expected))issue='当前播放器对应的章节发生变化，请重新读取章节，未自动推进任务。'
-  if(!active.length&&chapter.target&&chapter.url===chapter.target.frameUrl)issue='无法核对播放器与所选章节的对应关系，请在平台人工确认。'
-  const completion=active.find(p=>p.activeChapter===expected)?.completion??'unknown'
+  const matchesChapter=(p:PageProbe):boolean=>{
+   if(p.activeChapter!==expected)return false
+   if(!chapter.target)return true
+   if(!p.activeTarget)return task.chapters.filter(c=>(c.target?.text??c.title)===expected).length===1
+   const target=p.activeTarget
+   return target.selector===chapter.target.selector&&target.index===chapter.target.index&&target.text===expected&&(target.frameUrl===chapter.target.frameUrl||(chapter.url!==chapter.target.frameUrl&&(target.frameUrl===chapter.url||target.frameUrl===contents.getURL())))
+  }
+  if(active.length>1&&!issue)issue='页面存在多个当前章节标记，无法可靠确认所选章节。'
+  if(active.some(p=>!matchesChapter(p))&&!issue)issue='当前播放器对应的章节发生变化，请重新读取章节，未自动推进任务。'
+  if(!active.length&&chapter.target&&chapter.url===chapter.target.frameUrl&&!issue)issue='无法核对播放器与所选章节的对应关系，请在平台人工确认。'
+  const completion=active.length===1&&matchesChapter(active[0])?active[0].completion:'unknown'
   return {taskId:task.id,accountId:task.accountId,chapterId:chapter.id,generation:task.generation,observedAt:Date.now(),state:current?.media?.state??'unknown',currentTime:current?.media?.currentTime??0,duration:current?.media?.duration??0,completion,issue,url:contents.getURL()}
  }
 }

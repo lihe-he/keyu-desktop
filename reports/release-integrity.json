@@ -1,8 +1,8 @@
 {
   "passed": true,
-  "at": "2026-11-04T01:20:24.441Z",
-  "version": "0.1.4",
-  "unpackedDirectory": "release/build-0.1.4/win-unpacked",
+  "at": "2026-11-11T14:52:21.200Z",
+  "version": "0.1.5",
+  "unpackedDirectory": "release/candidate-0.1.5-r5/win-unpacked",
   "lockDocuments": 2,
   "lockSha256": "830155579e55d9e0bcf32018c955bdecffc489075d8899382c121af4f4b63b84",
   "directDependencies": {
@@ -26,21 +26,21 @@
   },
   "lockedPackageCount": 438,
   "outputHashes": {
-    "out/main/index.js": "39e8963b72940f2585c2dade7dfe8a7065eb25a469bfaa24eadfbdbc38b6f2f2",
+    "out/main/index.js": "684c491ac9b6abeb6889c8b6769b4b1db9e28937c9049e78991c3a211a2c07f9",
     "out/preload/index.js": "57f2f6896e2811d91e6d2cdc041df4798f76b4f6d2598983efd26604d2d38df5",
     "out/preload/platform.js": "9023677da046a3b079f9c0e411b5b6939e9bbf73f3d55b08bc4c51c0aa68ecad",
-    "out/renderer/assets/index-B8A_lwAJ.js": "ae50f011295be23838f5fde4c4c735f99a97ffb246c39478c1575657b015107a",
+    "out/renderer/assets/index-BPfcGeAb.js": "2f218238353e15e7eef7292a85a469c8d3e2b15143ae774a25c34f2b58f5600a",
     "out/renderer/assets/index-C8k9Ntq9.css": "e30887d21c60c4510dba0f8f81806ccb3bfb3622224e15f74a03828e272e5279",
-    "out/renderer/index.html": "3a7ff91e24bb19db8647a6fdfd22d950f584dca4b294aa43b116ef51f06d68cd"
+    "out/renderer/index.html": "0c74a2847ab12b83999109309d9bf1d47d4459b78dc1ca2c3d8388d2beaba91f"
   },
-  "asarSha256": "52961e15161bb1183e19c3e29d3aa55ca0c27e2078297c31a8efe63c51e84fa9",
+  "asarSha256": "2dee8bac4f562c0bc7fd01d6ebfd75261a37a9798d7923e44662254abdbb71cc",
   "nativeModules": [
     {
       "file": "resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/win32-x64.node",
       "sha256": "e21e5efd71fba66578e95b62554d9028064a80dafd7221bf8a8ef155de8d240a"
     }
   ],
-  "installerFile": "CampusCourseDesktop-Setup-0.1.4-x64.exe",
-  "installerSha256": "518cc9cfa5a432f90b70f63d9518e20690a88da67e0d83aa7d6f53ffc28ec926",
+  "installerFile": "CampusCourseDesktop-Setup-0.1.5-x64.exe",
+  "installerSha256": "6b81b9d24c5da0c4fefc9958dbdf7889e39a4e9a55b20243667c4955b4d53265",
   "note": "Identity checks only; not a real-platform or clean-Windows compatibility result."
 }
