@@ -13,6 +13,71 @@ async function snapshot():Promise<Snapshot>{return page.evaluate(async()=>{const
 test.beforeEach(async()=>{await mkdir('.test-data',{recursive:true});data=await mkdtemp(join(process.cwd(),'.test-data','e2e-'));await launch()})
 test.afterEach(async()=>{await app?.close()})
 
+test('signed original-page buttons switch A to B to A and keep the chapters separate',async()=>{
+ const a=await command({type:'account.add',platform:'chaoxing',label:'v24切换测试'})
+ await command({type:'account.open',accountId:a.id});expect(await command({type:'courses.refresh',accountId:a.id})).toBe(2)
+ const nav=page.getByRole('navigation',{name:'主导航'}),courses=(await snapshot()).courses
+ const originalPage=async(name:'A'|'B')=>{
+  await nav.getByRole('button',{name:'我的课程',exact:true}).click()
+  await page.locator('.course-card').filter({has:page.getByRole('heading',{name:'测试课程 '+name+' · v24切换',exact:true})}).getByRole('button',{name:'打开原页',exact:true}).click()
+  await expect(page.locator('h1')).toHaveText('学习工作台')
+  await expect.poll(()=>app.evaluate(async(_e,id)=>{await new Promise<void>(r=>setImmediate(r));const wc=(globalThis as any).__campusTest.runtime.contentsFor(id);return wc.executeJavaScript('document.querySelector("h2")?.textContent')},a.id)).toBe('测试课程 '+name+' · 不是真实平台课程')
+ }
+ const chapters=async(name:'A'|'B')=>{
+  await nav.getByRole('button',{name:'我的课程',exact:true}).click()
+  await page.locator('.course-card').filter({has:page.getByRole('heading',{name:'测试课程 '+name+' · v24切换',exact:true})}).getByRole('button',{name:'选择章节',exact:true}).click()
+  await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.chapter-row')).toHaveCount(2)
+  for(const title of await page.locator('.chapter-row .grow').allTextContents())expect(title).toContain('测试课程 '+name)
+  await page.getByRole('dialog').getByRole('button',{name:'取消',exact:true}).click()
+ }
+ await originalPage('A');await chapters('A');await originalPage('B');await chapters('B')
+ // Refresh the retained native directory so its links carry a newer signature.
+ await app.evaluate(async({webContents})=>{
+  const wc=webContents.getAllWebContents().find(w=>w.mainFrame.framesInSubtree.some(f=>f.url.includes('/wfw/courselist/course3')))
+  if(!wc)throw new Error('The account directory was discarded')
+  await new Promise<void>((resolve,reject)=>{wc.once('did-finish-load',()=>resolve());wc.loadURL(wc.getURL()).catch(reject)})
+ })
+ await originalPage('A');await chapters('A');await originalPage('A')
+ const state=await app.evaluate(async({webContents},id)=>{await new Promise<void>(r=>setImmediate(r));const t=(globalThis as any).__campusTest;return {count:webContents.getAllWebContents().length,bound: t.runtime.courseIsOpen(id.accountId,id.courseId),stored:JSON.stringify({courses:t.store.courses(),tasks:t.store.tasks(),logs:t.store.logs(),notices:t.store.notices()})}},{accountId:a.id,courseId:courses.find(c=>c.title.includes('课程 A'))!.id})
+ expect(state.count).toBe(3);expect(state.bound).toBe(true);expect(state.stored).not.toMatch(/ckenc|space_token|synthetic-signature/)
+ // Entering task mode also releases both browse documents.
+ const task=await command({type:'task.add',courseId:courses.find(c=>c.title.includes('课程 A'))!.id,chapterIds:[]})
+ await command({type:'queue.start',platform:'chaoxing'})
+ await expect.poll(()=>app.evaluate(({webContents})=>webContents.getAllWebContents().length)).toBe(2)
+ await command({type:'task.cancel',taskId:task.id});await expect.poll(()=>app.evaluate(({webContents})=>webContents.getAllWebContents().length)).toBe(1)
+ // Closing an account view releases its retained directory as well.
+ await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id});await command({type:'course.open',courseId:courses[0].id})
+ await command({type:'view.close',platform:'chaoxing'});await expect.poll(()=>app.evaluate(({webContents})=>webContents.getAllWebContents().length)).toBe(1)
+})
+
+test('a course redirect to A cannot be bound to B or read as B chapters',async()=>{
+ const a=await command({type:'account.add',platform:'chaoxing',label:'v24误跳测试'})
+ await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id})
+ const course=(await snapshot()).courses.find(c=>c.title.includes('课程 B'))!
+ await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'我的课程',exact:true}).click()
+ await page.locator('.course-card').filter({hasText:'测试课程 B · v24切换'}).getByRole('button',{name:'打开原页',exact:true}).click()
+ await expect(page.getByRole('dialog')).toContainText('平台跳转到了另一门课程');await expect(page.locator('h1')).toHaveText('我的课程')
+ expect(await app.evaluate((_e,ids)=>(globalThis as any).__campusTest.runtime.courseIsOpen(ids.accountId,ids.courseId),{accountId:a.id,courseId:course.id})).toBe(false)
+ await page.getByRole('button',{name:'知道了',exact:true}).click()
+ await expect(command({type:'course.chapters',courseId:course.id})).rejects.toThrow('课程')
+})
+
+test('successive normal course new-window links navigate each platform account view',async()=>{
+ const destinations={chaoxing:'https://mooc1-2.chaoxing.com/mooc-ans/visit/stucoursemiddle?courseid=fixture-A',icourse:'https://www.icourse163.org/learn/fixture-A',zhihuishu:'https://study.zhihuishu.com/learning/videoList?courseId=fixture-A'}
+ for(const platform of ['chaoxing','icourse','zhihuishu'] as const){
+  const a=await command({type:'account.add',platform,label:'新窗口课程测试 '+platform});await command({type:'account.open',accountId:a.id})
+  for(const url of [destinations[platform],destinations[platform].replace('fixture-A','fixture-B')]){
+   await app.evaluate(async(_e,target)=>{
+    await new Promise<void>(r=>setImmediate(r));const wc=(globalThis as any).__campusTest.runtime.contentsFor(target.accountId)
+    await wc.executeJavaScript('(()=>{const a=document.createElement("a");a.href='+JSON.stringify(target.url)+';a.target="_blank";a.textContent="测试课程入口";document.body.append(a);a.click()})()',true)
+   },{accountId:a.id,url})
+   await expect.poll(()=>app.evaluate((_e,id)=>(globalThis as any).__campusTest.runtime.contentsFor(id).getURL(),a.id)).toBe(url)
+   expect(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().length)).toBe(1)
+  }
+ }
+ expect(await app.evaluate(({webContents})=>webContents.getAllWebContents().length)).toBe(4)
+})
+
 test('observed v24 legacy hop retries HTTPS once without retaining the signed address',async()=>{
  const a=await command({type:'account.add',platform:'chaoxing',label:'v24HTTPS测试'})
  await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id})
@@ -27,7 +92,11 @@ test('observed v24 legacy hop retries HTTPS once without retaining the signed ad
 test('repeated legacy hop stops after one HTTPS retry',async()=>{
  const a=await command({type:'account.add',platform:'chaoxing',label:'v24循环测试'})
  await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id})
- await app.evaluate(async(_e,id)=>{await new Promise<void>(r=>setImmediate(r));const t=(globalThis as any).__campusTest;t.secureHopCount=0;t.runtime.contentsFor(id).on('did-start-navigation',(_event:unknown,url:string)=>{if(url.startsWith('https://mooc1.chaoxing.com/visit/stucoursemiddle?'))t.secureHopCount++})},a.id)
+ await app.evaluate(async({app:mainApp,webContents},id)=>{
+  await new Promise<void>(r=>setImmediate(r));const t=(globalThis as any).__campusTest,ses=t.runtime.contentsFor(id).session;t.secureHopCount=0
+  const record=(wc:any)=>{if(wc.session===ses)wc.on('did-start-navigation',(_event:unknown,url:string)=>{if(url.startsWith('https://mooc1.chaoxing.com/visit/stucoursemiddle?'))t.secureHopCount++})}
+  webContents.getAllWebContents().forEach(record);mainApp.on('web-contents-created',(_event,wc)=>record(wc))
+ },a.id)
  const [course]=(await snapshot()).courses
  await expect(command({type:'course.chapters',courseId:course.id})).rejects.toThrow('主页面 · 服务端重定向')
  expect(await app.evaluate(()=> (globalThis as any).__campusTest.secureHopCount)).toBe(1)
@@ -62,7 +131,9 @@ test('v24 signed directory import resolves the current entry without storing cre
  await expect(page.getByText('2 个已识别章节', {exact:true})).toBeVisible()
  await page.getByRole('dialog').getByRole('button',{name:'取消',exact:true}).click()
  // Opening from a stale course detail must not try the unsigned stored identity.
- await expect(command({type:'course.open',courseId:course.id})).rejects.toThrow('当前账号')
+ const currentId=await app.evaluate((_e,id)=>(globalThis as any).__campusTest.runtime.contentsFor(id).id,a.id)
+ await command({type:'course.open',courseId:course.id})
+ expect(await app.evaluate((_e,id)=>(globalThis as any).__campusTest.runtime.contentsFor(id).id,a.id)).toBe(currentId)
  await command({type:'view.navigate',platform:'chaoxing',action:'home'})
  await expect.poll(async()=>command({type:'courses.refresh',accountId:a.id})).toBe(1)
  // A normal target=_blank course link belongs in the account view, not a login popup.

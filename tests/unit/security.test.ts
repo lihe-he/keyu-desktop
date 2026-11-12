@@ -1,8 +1,12 @@
 import { isPersistableCourseUrl, courseIdentityUrl } from '../../src/main/core/security'
 import { describe,it,expect } from 'vitest'
-import { isAllowedUrl,partitionFor,trustedSender,safeUrl,redact } from '../../src/main/core/security'
+import { isAllowedUrl,isAuthenticationUrl,partitionFor,trustedSender,safeUrl,redact } from '../../src/main/core/security'
 import { commandSchema } from '../../src/shared/validation'
 import { platformOf } from '../../src/shared/platforms'
+describe('authentication window routing',()=>{
+ it.each([['chaoxing','https://passport2.chaoxing.com/login'],['icourse','https://reg.163.com/login'],['icourse','https://passport.163.com/login'],['zhihuishu','https://login.zhihuishu.com/']] as const)('recognizes the %s authentication host %#',(platform,url)=>expect(isAuthenticationUrl(platform,url)).toBe(true))
+ it.each([['chaoxing','https://mooc1-2.chaoxing.com/mooc-ans/visit/stucoursemiddle?courseid=101'],['chaoxing','https://i.chaoxing.com/'],['icourse','https://www.icourse163.org/learn/COURSE-101'],['zhihuishu','https://study.zhihuishu.com/learning/videoList?courseId=101'],['chaoxing','http://passport2.chaoxing.com/login'],['chaoxing','https://passport2.chaoxing.com.evil.test/login']] as const)('keeps a normal or rejected destination out of login windows %#',(platform,url)=>expect(isAuthenticationUrl(platform,url)).toBe(false))
+})
 describe('strict navigation policy',()=>{
  it('uses an explicit HTTPS course return for the official Chaoxing QR login',()=>{
   const platform=platformOf('chaoxing'),login=new URL(platform.home)

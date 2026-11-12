@@ -1,7 +1,7 @@
 {
   "kind": "real-public-entry-NOT-authenticated-course-acceptance",
   "passed": true,
-  "startedAt": "2026-11-12T04:21:07.297Z",
+  "startedAt": "2026-11-12T06:42:27.184Z",
   "platforms": [
     {
       "platform": "chaoxing",
@@ -42,7 +42,7 @@
     {
       "platform": "zhihuishu",
       "openSucceeded": true,
-      "loginProbe": "logged-out",
+      "loginProbe": "unknown",
       "frames": [
         {
           "origin": "https://login.zhihuishu.com",
@@ -52,7 +52,7 @@
           "nodeExposed": false,
           "playingMedia": 0,
           "ready": "complete",
-          "visiblePasswordInputs": 1
+          "visiblePasswordInputs": 0
         }
       ],
       "loadErrors": []
@@ -61,5 +61,5 @@
   "version": "0.1.5",
   "packaged": true,
   "isolatedVerification": true,
-  "finishedAt": "2026-11-12T04:21:29.986Z"
+  "finishedAt": "2026-11-12T06:42:56.744Z"
 }

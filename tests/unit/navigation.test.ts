@@ -1,8 +1,24 @@
 import { describe,it,expect } from 'vitest'
-import { blockedNavigationMessage, pageLoadFailure, courseHttpsRetry } from '../../src/main/core/navigation'
+import { blockedNavigationMessage, pageLoadFailure, courseHttpsRetry, courseDestinationIssue } from '../../src/main/core/navigation'
 
 const signedEntry='https://v24.chaoxing.com/courselist/opencoursenewfy?role=3&courseId=101&clazzId=201&cpi=301&ckenc=synthetic-signature'
 const legacyEntry='http://mooc1.chaoxing.com/visit/stucoursemiddle?courseid=101&ckenc=synthetic-hop'
+describe('course identity after redirects',()=>{
+ const destination='https://mooc1-2.chaoxing.com/mooc-ans/visit/stucoursemiddle?courseid=101&clazzid=201&cpi=301'
+ it('recognizes identifier casing across the directory and final course route',()=>expect(courseDestinationIssue('chaoxing',signedEntry,destination)).toBeNull())
+ it.each(['courseid=101','clazzid=201','cpi=301'])('rejects a conflicting %s instead of binding another course',key=>{
+  expect(courseDestinationIssue('chaoxing',signedEntry,destination.replace(key,key.slice(0,key.indexOf('='))+'=999'))).toContain('另一门课程')
+ })
+ it.each([destination+'&courseId=101',destination+'&clazzId=201',destination+'&cpi=301'])('rejects duplicate case-insensitive identifiers %#',url=>{
+  expect(courseDestinationIssue('chaoxing',signedEntry,url)).toContain('歧义')
+ })
+ it.each([signedEntry,'https://passport2.chaoxing.com/login',destination.replace('courseid=101&',''),'https://evil.test/course?courseid=101'])('refuses a signed entry without a verifiable final course %#',url=>{
+  expect(courseDestinationIssue('chaoxing',signedEntry,url)).not.toBeNull()
+ })
+ it('also refuses an ordinary course URL that redirects to a different known course',()=>{
+  expect(courseDestinationIssue('chaoxing',destination,destination.replace('courseid=101','courseid=102'))).toContain('另一门课程')
+ })
+})
 describe('bounded course HTTPS retry',()=>{
  it('preserves the observed redirect parameters only in the HTTPS retry',()=>{
   expect(courseHttpsRetry('chaoxing',signedEntry,legacyEntry)).toBe(legacyEntry.replace('http:','https:'))

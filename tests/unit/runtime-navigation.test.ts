@@ -1,15 +1,16 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { session, WebContentsView, type BrowserWindow, type Session } from 'electron'
+import { session, WebContentsView, BrowserWindow, type Session } from 'electron'
 import { BrowserRuntime } from '../../src/main/runtime'
 import { PlatformAdapter } from '../../src/main/adapters/adapter'
-import type { Account, Course } from '../../src/shared/contracts'
+import type { Account, Course, PlatformId } from '../../src/shared/contracts'
 
 vi.mock('electron',()=>({BrowserWindow:vi.fn(),WebContentsView:vi.fn(),session:{fromPartition:vi.fn()}}))
 
 const signedEntry='https://v24.chaoxing.com/courselist/opencoursenewfy?role=3&courseId=101&clazzId=201&cpi=301&ckenc=synthetic-signature'
 const legacyEntry='http://mooc1.chaoxing.com/visit/stucoursemiddle?courseid=101&clazzid=201&cpi=301&ckenc=synthetic-hop'
 const otherPage='https://i.chaoxing.com/space/index'
+const coursePage='https://mooc1-2.chaoxing.com/mooc-ans/visit/stucoursemiddle?courseid=101&clazzid=201&cpi=301'
 interface PendingLoad {url:string;resolve:()=>void;reject:(error:unknown)=>void;stopped:boolean;failed:boolean}
 
 class FakeContents extends EventEmitter {
@@ -24,23 +25,33 @@ class FakeContents extends EventEmitter {
  }))
  stop=vi.fn(()=>{if(this.active){this.active.stopped=true;this.active.reject({errno:-3})}})
  close=vi.fn(()=>{this.destroyed=true;this.active?.reject({errno:-3});this.emit('destroyed')})
- finish(index:number){const pending=this.loads[index];if(this.active===pending&&!pending.stopped&&!pending.failed){this.url=pending.url;this.emit('did-navigate',{},this.url)}pending.resolve()}
+ finish(index:number,url?:string){const pending=this.loads[index];if(this.active===pending&&!pending.stopped&&!pending.failed){this.url=url??pending.url;this.emit('did-navigate',{},this.url)}pending.resolve()}
  fail(index:number,errno=-3){this.loads[index].failed=true;this.loads[index].reject({errno})}
  redirect(url:string,isMainFrame=true){const event={url,isMainFrame,preventDefault:vi.fn()};this.emit('will-redirect',event,url,false,isMainFrame);return event}
  requestNavigation(url:string,isMainFrame=true){const event={url,isMainFrame,preventDefault:vi.fn()};this.emit('will-frame-navigate',event);return event}
 }
+class FakePopup extends EventEmitter {
+ webContents=new FakeContents();show=vi.fn();focus=vi.fn()
+ isDestroyed(){return this.webContents.isDestroyed()}
+ loadURL(url:string){return this.webContents.loadURL(url)}
+ destroy(){this.webContents.close();this.emit('closed')}
+}
 
 const accounts:Account[]=[
  {id:'account-a',platform:'chaoxing',label:'合成导航账号 A',createdAt:0,loginStatus:'unknown'},
- {id:'account-b',platform:'chaoxing',label:'合成导航账号 B',createdAt:0,loginStatus:'unknown'}
+ {id:'account-b',platform:'chaoxing',label:'合成导航账号 B',createdAt:0,loginStatus:'unknown'},
+ {id:'account-mooc',platform:'icourse',label:'合成 MOOC 账号',createdAt:0,loginStatus:'unknown'},
+ {id:'account-zhihuishu',platform:'zhihuishu',label:'合成智慧树账号',createdAt:0,loginStatus:'unknown'}
 ]
-let runtime:BrowserRuntime,warn=vi.fn<(message:string)=>void>()
+let runtime:BrowserRuntime,warn=vi.fn<(message:string)=>void>(),popups:FakePopup[]
 const resultOf=(promise:Promise<void>)=>promise.then(()=>null,error=>error as Error)
 const contentsFor=(account=accounts[0])=>runtime.contentsFor(account.id) as unknown as FakeContents
 async function flush(){for(let n=0;n<8;n++)await Promise.resolve()}
 
 beforeEach(()=>{
  vi.useFakeTimers();vi.clearAllMocks()
+ popups=[]
+ vi.mocked(BrowserWindow).mockImplementation(function(){const popup=new FakePopup();popups.push(popup);return popup as unknown as BrowserWindow})
  vi.mocked(session.fromPartition).mockImplementation(()=>Object.assign(new EventEmitter(),{setPermissionCheckHandler:vi.fn(),setPermissionRequestHandler:vi.fn(),webRequest:{onBeforeRequest:vi.fn()}}) as unknown as Session)
  vi.mocked(WebContentsView).mockImplementation(function(){return {webContents:new FakeContents(),setVisible:vi.fn(),setBounds:vi.fn()} as unknown as WebContentsView})
  const window={contentView:{addChildView:vi.fn(),removeChildView:vi.fn()}} as unknown as BrowserWindow
@@ -149,16 +160,86 @@ describe('course entry document ownership',()=>{
  it('accepts a current directory entry and records only its own completed course',async()=>{
   const starting=runtime.browse(accounts[0],otherPage),contents=contentsFor();contents.finish(0);await starting
   vi.spyOn(PlatformAdapter.prototype,'resolveCourseUrl').mockResolvedValueOnce(signedEntry)
-  const result=resultOf(runtime.browseCourse(accounts[0],course));await flush();contents.finish(1)
+  const result=resultOf(runtime.browseCourse(accounts[0],course));await flush();contentsFor().finish(0,coursePage)
   expect(await result).toBeNull();expect(runtime.courseIsOpen(accounts[0].id,course.id)).toBe(true)
+  expect(contents.isDestroyed()).toBe(false);expect(contents.loadURL).toHaveBeenCalledTimes(1)
  })
 
  it('releases the old course binding after the main page changes its route without reloading',async()=>{
   const starting=runtime.browse(accounts[0],otherPage),contents=contentsFor();contents.finish(0);await starting
   vi.spyOn(PlatformAdapter.prototype,'resolveCourseUrl').mockResolvedValueOnce(signedEntry)
-  const opening=resultOf(runtime.browseCourse(accounts[0],course));await flush();contents.finish(1);expect(await opening).toBeNull()
+  const opening=resultOf(runtime.browseCourse(accounts[0],course));await flush();const opened=contentsFor();opened.finish(0,coursePage);expect(await opening).toBeNull()
   const anotherCourse=signedEntry.replace('courseId=101','courseId=102')
-  contents.url=anotherCourse;contents.emit('did-navigate-in-page',{},anotherCourse,true)
+  opened.url=anotherCourse;opened.emit('did-navigate-in-page',{},anotherCourse,true)
   expect(runtime.courseIsOpen(accounts[0].id,course.id)).toBe(false)
+ })
+
+ it('reads each signed course from the retained account directory and reuses only the course view',async()=>{
+  const starting=runtime.browse(accounts[0],otherPage),directory=contentsFor();directory.finish(0);await starting
+  const second:Course={...course,id:'synthetic-course-b',url:course.url.replace('courseId=101','courseId=102')},signedSecond=signedEntry.replace('courseId=101','courseId=102')
+  const resolve=vi.spyOn(PlatformAdapter.prototype,'resolveCourseUrl').mockResolvedValueOnce(signedEntry).mockResolvedValueOnce(signedSecond).mockResolvedValueOnce(signedEntry.replace('synthetic-signature','synthetic-new-signature'))
+  const first=resultOf(runtime.browseCourse(accounts[0],course));await flush();const opened=contentsFor();opened.finish(0,coursePage);expect(await first).toBeNull()
+  const next=resultOf(runtime.browseCourse(accounts[0],second));await flush();opened.finish(1,coursePage.replace('courseid=101','courseid=102'));expect(await next).toBeNull()
+  expect(resolve).toHaveBeenNthCalledWith(2,directory,second);expect(runtime.courseIsOpen(accounts[0].id,course.id)).toBe(false);expect(runtime.courseIsOpen(accounts[0].id,second.id)).toBe(true)
+  const again=resultOf(runtime.browseCourse(accounts[0],course));await flush();opened.finish(2,coursePage);expect(await again).toBeNull()
+  expect(resolve).toHaveBeenNthCalledWith(3,directory,course);expect(opened.loads[2].url).toContain('synthetic-new-signature')
+  await runtime.browseCourse(accounts[0],course);expect(resolve).toHaveBeenCalledTimes(3)
+  expect(contentsFor()).toBe(opened);expect(vi.mocked(WebContentsView)).toHaveBeenCalledTimes(2)
+  runtime.close('chaoxing');expect(directory.isDestroyed()).toBe(true);expect(opened.isDestroyed()).toBe(true)
+ })
+
+ it.each(['directory-reload','course-navigation','account-replacement'] as const)('rejects a delayed second-course entry after %s',async change=>{
+  const starting=runtime.browse(accounts[0],otherPage),directory=contentsFor();directory.finish(0);await starting
+  const resolve=vi.spyOn(PlatformAdapter.prototype,'resolveCourseUrl').mockResolvedValueOnce(signedEntry)
+  const first=resultOf(runtime.browseCourse(accounts[0],course));await flush();const opened=contentsFor();opened.finish(0,coursePage);expect(await first).toBeNull()
+  let completeEntry!:(value:string)=>void
+  resolve.mockReturnValueOnce(new Promise(done=>{completeEntry=done}))
+  const second:Course={...course,id:'synthetic-course-b',url:course.url.replace('courseId=101','courseId=102')},result=resultOf(runtime.browseCourse(accounts[0],second))
+  if(change==='directory-reload')directory.emit('did-start-navigation',{},otherPage,false,true)
+  else if(change==='course-navigation')opened.emit('did-start-navigation',{},otherPage,false,true)
+  else {const replacement=runtime.browse(accounts[1],otherPage);contentsFor(accounts[1]).finish(0);await replacement}
+  completeEntry(signedEntry.replace('courseId=101','courseId=102'));await flush()
+  expect((await result)?.message).toContain('改变');expect(opened.loadURL).toHaveBeenCalledTimes(1)
+  expect(runtime.courseIsOpen(accounts[0].id,second.id)).toBe(false)
+  if(change==='account-replacement'){expect(directory.isDestroyed()).toBe(true);expect(opened.isDestroyed()).toBe(true)}
+ })
+
+ it('returns to the retained directory when the first course page has no earlier history',async()=>{
+  const starting=runtime.browse(accounts[0],otherPage),directory=contentsFor();directory.finish(0);await starting
+  vi.spyOn(PlatformAdapter.prototype,'resolveCourseUrl').mockResolvedValueOnce(signedEntry)
+  const result=resultOf(runtime.browseCourse(accounts[0],course));await flush();const opened=contentsFor();opened.finish(0,coursePage);expect(await result).toBeNull()
+  opened.navigationHistory.canGoBack=()=>false;await runtime.navigate('chaoxing','back')
+  expect(contentsFor()).toBe(directory);expect(opened.isDestroyed()).toBe(true);expect(runtime.courseIsOpen(accounts[0].id,course.id)).toBe(false)
+ })
+})
+
+describe('course windows stay in the requesting account',()=>{
+ const destinations:Record<PlatformId,string>={chaoxing:'https://mooc1-2.chaoxing.com/mooc-ans/visit/stucoursemiddle?courseid=101',icourse:'https://www.icourse163.org/learn/COURSE-101',zhihuishu:'https://study.zhihuishu.com/learning/videoList?courseId=101'}
+ it.each(['chaoxing','icourse','zhihuishu'] as const)('opens successive %s course windows in the account view',async platform=>{
+  const account=accounts.find(a=>a.platform===platform)!,first=destinations[platform],second=first.replace('101','102')
+  const starting=runtime.browse(account,first),contents=contentsFor(account);contents.finish(0);await starting
+  const handler=contents.setWindowOpenHandler.mock.calls[0][0]
+  expect(handler({url:first})).toEqual({action:'deny'});await flush()
+  expect(contents.loads[1]?.url).toBe(first);contents.finish(1);await flush()
+  expect(handler({url:second})).toEqual({action:'deny'});await flush()
+  expect(contents.loads[2]?.url).toBe(second);contents.finish(2);await flush()
+  expect(contents.getURL()).toBe(second);expect(popups).toHaveLength(0)
+ })
+
+ it('updates the reused authentication window to the newly requested login URL',async()=>{
+  const starting=runtime.browse(accounts[0],otherPage),contents=contentsFor();contents.finish(0);await starting
+  const handler=contents.setWindowOpenHandler.mock.calls[0][0],first='https://passport2.chaoxing.com/login?refer=first',second=first.replace('first','second')
+  handler({url:first});popups[0].webContents.finish(0);await flush()
+  handler({url:second});await flush()
+  expect(popups).toHaveLength(1);expect(popups[0].webContents.loads[1]?.url).toBe(second)
+  popups[0].webContents.finish(1);await flush();expect(popups[0].webContents.getURL()).toBe(second)
+ })
+
+ it('refuses an old account window after the platform switches accounts',async()=>{
+  const starting=runtime.browse(accounts[0],otherPage),contents=contentsFor();contents.finish(0);await starting
+  const handler=contents.setWindowOpenHandler.mock.calls[0][0]
+  const replacement=runtime.browse(accounts[1],otherPage),next=contentsFor(accounts[1]);next.finish(0);await replacement
+  expect(handler({url:destinations.chaoxing})).toEqual({action:'deny'});await flush()
+  expect(popups).toHaveLength(0);expect(next.loadURL).toHaveBeenCalledTimes(1)
  })
 })

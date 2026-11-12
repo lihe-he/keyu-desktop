@@ -2,15 +2,18 @@ import { BrowserWindow, WebContentsView, session, type Session, type WebContents
 import { join } from 'node:path'
 import type { Account, Course, Task, Chapter, PlatformId, RuntimeInfo, Bounds, Observation } from '../shared/contracts'
 import { platformOf } from '../shared/platforms'
-import { isAllowedUrl, isDirectoryCourse, partitionFor, safeUrl } from './core/security'
+import { isAllowedUrl, isAuthenticationUrl, isDirectoryCourse, courseIdentityUrl, partitionFor, safeUrl } from './core/security'
 import type { PlaybackRuntime } from './core/engine'
 import { PlatformAdapter } from './adapters/adapter'
-import { blockedNavigationMessage, pageLoadFailure, courseHttpsRetry, type NavigationStage } from './core/navigation'
+import { blockedNavigationMessage, pageLoadFailure, courseHttpsRetry, courseDestinationIssue, type NavigationStage } from './core/navigation'
 interface Entry { view: WebContentsView; accountId: string; platform: PlatformId; taskId: string|null; generation: number; documentRevision:number; mode:'browse'|'task'; visible:boolean; allowedToPlay:boolean; expectedUrl:string; navigationChanged:boolean; browsingCourseId?:string }
 interface NavigationAttempt {entry:Entry;generation:number;controller:AbortController;source:string;loginPage:boolean;blocker?:string;secureRetry?:string}
 class NavigationTimeoutError extends Error {constructor(){super('平台页面加载超时，请检查网络或稍后重试。')}}
 export class BrowserRuntime implements PlaybackRuntime {
  private entries=new Map<PlatformId,Entry>();private sessions=new Map<string,Session>();private popups=new Map<string,Set<BrowserWindow>>();private displayed:PlatformId|null=null;private lastBounds:Bounds|null=null
+ // Retain at most one directory document per platform, in its account session.
+ // Course signatures are read from that DOM for each switch and never cached here.
+ private directories=new Map<PlatformId,Entry>()
  private navigationIssues=new WeakMap<WebContents,{pending?:NavigationAttempt}>()
  constructor(private window: BrowserWindow, private account:(id:string)=>Account, private changed:()=>void, private warn:(message:string)=>void, private fixtureSetup?: (ses:Session,account:Account)=>void){}
  adapter(platform:PlatformId):PlatformAdapter {return new PlatformAdapter(platform)}
@@ -46,14 +49,15 @@ export class BrowserRuntime implements PlaybackRuntime {
   contents.setWindowOpenHandler(({url})=>{
    if(!isAllowedUrl(account.platform,url)){this.warn(blockedNavigationMessage(account.platform,url,true,'new-window',false));return {action:'deny'}}
    // Only browsing/login can open a controlled authentication window.
-   if(isPopup||this.entries.get(account.platform)?.mode==='task'){this.warn('学习任务请求新窗口，请暂停任务后在工作台人工处理。');return {action:'deny'}}
+   const entry=this.entries.get(account.platform)
+   if(contents.isDestroyed()||!entry||entry.accountId!==account.id||(!isPopup&&entry.view.webContents!==contents)){return {action:'deny'}}
+   if(isPopup||entry.mode==='task'){this.warn('学习任务请求新窗口，请暂停任务后在工作台人工处理。');return {action:'deny'}}
    // A directory course is a normal course page, not an authentication popup.
    // Keep it in the scheduled account's view; never persist the signed address.
-   const entry=this.entries.get(account.platform)
-   if(entry?.accountId===account.id&&isDirectoryCourse(account.platform,url)){
-    entry.browsingCourseId=undefined;void this.load(entry,url).catch(error=>this.warn(error instanceof Error?error.message:'课程入口未能加载，请返回“我学的课”后重试。'));return {action:'deny'}
+   if(!isAuthenticationUrl(account.platform,url)){
+    void this.browsePage(entry,url).catch(error=>this.warn(error instanceof Error?error.message:'课程入口未能加载，请返回“我学的课”后重试。'));return {action:'deny'}
    }
-   const existingPopup=[...(this.popups.get(account.id)??[])].find(w=>!w.isDestroyed());if(existingPopup){existingPopup.show();existingPopup.focus();return {action:'deny'}}
+   const existingPopup=[...(this.popups.get(account.id)??[])].find(w=>!w.isDestroyed());if(existingPopup){existingPopup.show();existingPopup.focus();void existingPopup.loadURL(url).catch(()=>this.warn('登录窗口加载失败，请检查网络。'));return {action:'deny'}}
    const popup=new BrowserWindow({width:960,height:740,parent:this.window,show:false,autoHideMenuBar:true,webPreferences:{session:this.getSession(account),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:join(__dirname,'../preload/platform.js')}})
    const set=this.popups.get(account.id)??new Set<BrowserWindow>();set.add(popup);this.popups.set(account.id,set)
    this.guard(popup.webContents,account,true);popup.webContents.setAudioMuted(true)
@@ -68,6 +72,9 @@ export class BrowserRuntime implements PlaybackRuntime {
  private create(account:Account,mode:'browse'|'task',task?:Task):Entry {
   this.close(account.platform)
   for(const [id,popups] of this.popups)if(this.account(id).platform===account.platform){for(const popup of popups)popup.destroy();this.popups.delete(id)}
+  return this.createView(account,mode,task)
+ }
+ private createView(account:Account,mode:'browse'|'task',task?:Task):Entry {
   const view=new WebContentsView({webPreferences:{session:this.getSession(account),preload:join(__dirname,'../preload/platform.js'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,backgroundThrottling:true,allowRunningInsecureContent:false}})
   const entry:Entry={view,accountId:account.id,platform:account.platform,taskId:task?.id??null,generation:task?.generation??0,documentRevision:0,mode,visible:false,allowedToPlay:false,expectedUrl:'',navigationChanged:false}
   this.entries.set(account.platform,entry);this.window.contentView.addChildView(view);view.setVisible(false);view.setBounds({x:0,y:0,width:1000,height:650});view.webContents.setAudioMuted(true);this.guard(view.webContents,account)
@@ -76,6 +83,7 @@ export class BrowserRuntime implements PlaybackRuntime {
   view.webContents.on('did-navigate-in-page',(_event,url,isMainFrame)=>{entry.documentRevision++;if(isMainFrame){entry.browsingCourseId=undefined;if(entry.mode==='task'&&entry.expectedUrl&&url!==entry.expectedUrl)entry.navigationChanged=true}this.changed()})
   view.webContents.on('render-process-gone',()=>{entry.allowedToPlay=false;this.warn('平台页面进程已退出，对应任务将在状态检查时暂停。');this.changed()})
   view.webContents.on('unresponsive',()=>this.warn('平台页面暂时无响应，任务将停止自动推进。'))
+  if(mode==='browse'&&this.displayed===account.platform&&this.lastBounds)this.show(account.platform,this.lastBounds)
   this.changed();return entry
  }
  private ownsNavigation(attempt:NavigationAttempt):boolean {
@@ -129,6 +137,7 @@ export class BrowserRuntime implements PlaybackRuntime {
   const existing=this.entries.get(account.platform)
   if(existing?.mode==='task')throw new Error('该平台正在保留学习任务。请先暂停或取消任务，再浏览其他账号或课程。')
   const entry=existing?.accountId===account.id?existing:this.create(account,'browse')
+  this.closeDirectory(account.platform)
   entry.browsingCourseId=undefined
   await this.load(entry,url);this.changed()
  }
@@ -137,15 +146,52 @@ export class BrowserRuntime implements PlaybackRuntime {
   return !!entry&&entry.accountId===accountId&&entry.mode==='browse'&&entry.browsingCourseId===courseId&&!entry.view.webContents.isDestroyed()
  }
  async browseCourse(account:Account,course:Course):Promise<void>{
+  if(course.accountId!==account.id||course.platform!==account.platform)throw new Error('课程不属于所选账号，请刷新后重试。')
   const current=this.entries.get(account.platform)
   if(current?.mode==='task')throw new Error('请先暂停该平台任务，再打开课程。')
-  const contents=this.contentsForOrCreate(account,course),entry=this.entries.get(account.platform)!,sourceUrl=contents.getURL(),sourceRevision=entry.documentRevision
+  if(this.courseIsOpen(account.id,course.id))return
+  this.contentsForOrCreate(account,course)
+  const entry=this.entries.get(account.platform)!,directory=this.directories.get(account.platform)
+  const source=isDirectoryCourse(account.platform,course.url)&&directory?.accountId===account.id?directory:entry
+  const contents=source.view.webContents,sourceUrl=contents.getURL(),sourceRevision=source.documentRevision,entryRevision=entry.documentRevision
   const url=await this.adapter(account.platform).resolveCourseUrl(contents,course)
-  if(this.entries.get(account.platform)!==entry||contents.isDestroyed()||entry.documentRevision!==sourceRevision||contents.getURL()!==sourceUrl)throw new Error('账号页面已改变，请重试。')
+  if(this.entries.get(account.platform)!==entry||!this.ownsEntry(source)||contents.isDestroyed()||source.documentRevision!==sourceRevision||contents.getURL()!==sourceUrl||entry.documentRevision!==entryRevision)throw new Error('账号页面已改变，请重试。')
+  await this.browsePage(entry,url,course.id)
+ }
+ private ownsEntry(entry:Entry):boolean{return this.entries.get(entry.platform)===entry||this.directories.get(entry.platform)===entry}
+ private async browsePage(current:Entry,url:string,courseId?:string):Promise<void>{
+  if(this.entries.get(current.platform)!==current||current.view.webContents.isDestroyed())throw new Error('页面操作已取消。')
+  let entry=current
+  if(isDirectoryCourse(current.platform,url)){
+   if(!courseIdentityUrl(current.platform,url)||!new URL(url).searchParams.get('ckenc'))throw new Error('课程缺少当前目录的临时入口，请返回“我学的课”刷新后重试。')
+   if(!this.directories.has(current.platform)){
+    this.directories.set(current.platform,current);current.visible=false;current.view.setVisible(false)
+    entry=this.createView(this.account(current.accountId),'browse')
+   }
+  }
   entry.browsingCourseId=undefined
-  const loadedRevision=await this.load(entry,url)
-  if(this.entries.get(account.platform)!==entry||contents.isDestroyed()||entry.documentRevision!==loadedRevision)throw new Error('账号页面已改变，请重试。')
-  entry.browsingCourseId=course.id;this.changed()
+  const loadedRevision=await this.load(entry,url),contents=entry.view.webContents
+  if(this.entries.get(entry.platform)!==entry||contents.isDestroyed()||entry.documentRevision!==loadedRevision)throw new Error('账号页面已改变，请重试。')
+  const issue=courseDestinationIssue(entry.platform,url,contents.getURL())
+  if(issue){this.restoreDirectory(entry.platform);throw new Error(issue)}
+  entry.browsingCourseId=courseId;this.changed()
+ }
+ private destroyEntry(entry:Entry):void{
+  this.cancelNavigation(entry.view.webContents)
+  try{this.window.contentView.removeChildView(entry.view)}catch{}
+  if(!entry.view.webContents.isDestroyed())entry.view.webContents.close({waitForBeforeUnload:false})
+ }
+ private closeDirectory(platform:PlatformId):void{
+  const directory=this.directories.get(platform);if(!directory)return
+  this.directories.delete(platform);this.destroyEntry(directory)
+ }
+ private restoreDirectory(platform:PlatformId):boolean{
+  const directory=this.directories.get(platform),current=this.entries.get(platform)
+  if(!directory||directory.view.webContents.isDestroyed()||directory.accountId!==current?.accountId)return false
+  this.directories.delete(platform);this.entries.set(platform,directory)
+  if(current)this.destroyEntry(current)
+  if(this.displayed===platform&&this.lastBounds)this.show(platform,this.lastBounds)
+  this.changed();return true
  }
  private contentsForOrCreate(account:Account,course:Course):WebContents {
   const entry=this.entries.get(account.platform)
@@ -226,15 +272,15 @@ export class BrowserRuntime implements PlaybackRuntime {
   const e=this.entries.get(platform);if(!e)throw new Error('请先打开账号或课程。');if(e.mode==='task')throw new Error('请先暂停任务，避免导航导致章节混淆。')
   this.cancelNavigation(e.view.webContents,true)
   e.browsingCourseId=undefined
-  if(action==='home')await this.load(e,platformOf(platform).courses)
+  if(action==='home'){this.closeDirectory(platform);await this.load(e,platformOf(platform).courses)}
   else if(action==='reload')e.view.webContents.reload()
   else if(e.view.webContents.navigationHistory.canGoBack())e.view.webContents.navigationHistory.goBack()
+  else this.restoreDirectory(platform)
  }
  close(platform:PlatformId,taskId?:string):void{
-  const e=this.entries.get(platform);if(!e||taskId&&e.taskId!==taskId)return
-  this.cancelNavigation(e.view.webContents)
-  this.entries.delete(platform);try{this.window.contentView.removeChildView(e.view)}catch{}
-  if(!e.view.webContents.isDestroyed())e.view.webContents.close({waitForBeforeUnload:false})
+  const e=this.entries.get(platform);if(taskId&&e?.taskId!==taskId)return
+  this.entries.delete(platform);if(e)this.destroyEntry(e)
+  this.closeDirectory(platform)
   this.changed()
  }
  async clearAccount(account:Account):Promise<void>{
@@ -243,6 +289,6 @@ export class BrowserRuntime implements PlaybackRuntime {
   const ses=this.getSession(account);await ses.clearStorageData();await ses.clearCache();await ses.clearAuthCache();await ses.closeAllConnections()
  }
  info():RuntimeInfo[]{return [...this.entries.values()].map(e=>{const url=e.view.webContents.isDestroyed()?'':e.view.webContents.getURL();return {platform:e.platform,taskId:e.taskId,accountId:e.accountId,mode:e.mode,visible:e.visible,url:safeUrl(url),title:platformOf(e.platform).name,loginPending:e.platform==='chaoxing'&&/^https:\/\/passport2\.chaoxing\.com\/login(?:[?#]|$)/.test(url)}})}
- async guardBrowsing():Promise<void>{await Promise.all([...this.entries.values()].filter(e=>!e.allowedToPlay&&!e.view.webContents.isDestroyed()).map(e=>this.adapter(e.platform).operate(e.view.webContents,'pause').catch(()=>{})))}
+ async guardBrowsing():Promise<void>{await Promise.all([...this.entries.values(),...this.directories.values()].filter(e=>!e.allowedToPlay&&!e.view.webContents.isDestroyed()).map(e=>this.adapter(e.platform).operate(e.view.webContents,'pause').catch(()=>{})))}
  closeAll():void{for(const p of [...this.entries.keys()])this.close(p);for(const popups of this.popups.values())for(const p of popups)p.destroy();this.popups.clear()}
 }

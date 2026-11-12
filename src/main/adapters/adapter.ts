@@ -63,7 +63,7 @@ export class PlatformAdapter {
    return course.url
   }
   const probes=await this.read(contents);const issue=probes.find(p=>p.issue)?.issue;if(issue)throw new Error(issue)
-  const matches=[...new Set(probes.flatMap(p=>p.courses).filter(c=>courseIdentityUrl(this.platform,c.url)===course.url).map(c=>c.url))]
+  const matches=[...new Set(probes.flatMap(p=>p.courses).filter(c=>courseIdentityUrl(this.platform,c.url)===course.url&&new URL(c.url).searchParams.get('ckenc')).map(c=>c.url))]
   if(matches.length!==1)throw new Error('请在工作台打开学习通“课程 → 我学的课”，刷新课程后重试。此课程需从当前账号的目录取得临时入口，应用不会保存或复用旧签名。')
   return matches[0]
  }

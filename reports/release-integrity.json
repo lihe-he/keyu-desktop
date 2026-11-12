@@ -1,8 +1,8 @@
 {
   "passed": true,
-  "at": "2026-11-12T04:27:01.465Z",
+  "at": "2026-11-12T06:47:06.054Z",
   "version": "0.1.5",
-  "unpackedDirectory": "release/candidate-0.1.5-r7/win-unpacked",
+  "unpackedDirectory": "release/candidate-0.1.5-r8/win-unpacked",
   "lockDocuments": 2,
   "lockSha256": "830155579e55d9e0bcf32018c955bdecffc489075d8899382c121af4f4b63b84",
   "directDependencies": {
@@ -26,14 +26,14 @@
   },
   "lockedPackageCount": 438,
   "outputHashes": {
-    "out/main/index.js": "18f9dc9d99bac2b145f058f4aec8a66fd2b2f4c9cf69b450128c154fcd300215",
+    "out/main/index.js": "f394a740843cfba463547e1806ecba7e2856266012c469d7bad798681e623cdb",
     "out/preload/index.js": "57f2f6896e2811d91e6d2cdc041df4798f76b4f6d2598983efd26604d2d38df5",
     "out/preload/platform.js": "9023677da046a3b079f9c0e411b5b6939e9bbf73f3d55b08bc4c51c0aa68ecad",
+    "out/renderer/assets/index-BiaLLwvj.js": "fe0b3681a2eff937a68e00f639289cbb26a046153c6998c51fada577bae9deba",
     "out/renderer/assets/index-C8k9Ntq9.css": "e30887d21c60c4510dba0f8f81806ccb3bfb3622224e15f74a03828e272e5279",
-    "out/renderer/assets/index-DBsBkDJN.js": "f9ca8d3444d10b0c503eca0941934c28164d21659268c17f0d6884bf7fa414d4",
-    "out/renderer/index.html": "c823c832657e06bbd8f6af1a37cfffa678921b41240ef22b2db564aca2702ebb"
+    "out/renderer/index.html": "01408bbd1f91f8d9fbc98c3fdacb513ec17d0933e895baf91b3bea03dc9f53aa"
   },
-  "asarSha256": "d33f35fafe9c94f131aa4334538c375dc6c4148abd4dad6379b2e069b7926116",
+  "asarSha256": "3298c7501592516f8c84fa6273dd0a501a3188dab71f5f67c70609182db73868",
   "nativeModules": [
     {
       "file": "resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/win32-x64.node",
@@ -41,7 +41,7 @@
     }
   ],
   "installerFile": "CampusCourseDesktop-Setup-0.1.5-x64.exe",
-  "installerPath": "release/candidate-0.1.5-r7/CampusCourseDesktop-Setup-0.1.5-x64.exe",
-  "installerSha256": "7c3446db559d3085462cd909083e8590f8940ad83739c6b0994c502f8f3df322",
+  "installerPath": "release/candidate-0.1.5-r8/CampusCourseDesktop-Setup-0.1.5-x64.exe",
+  "installerSha256": "b32c3f9b31b6b9b1a5a88c87a4abf2d1a1b25711e8146c6ad6a36fc7d6ebc609",
   "note": "Identity checks only; not a real-platform or clean-Windows compatibility result."
 }

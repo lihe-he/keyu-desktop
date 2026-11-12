@@ -4,6 +4,13 @@ import { platformOf } from '../../shared/platforms'
 export function isAllowedUrl(platform: PlatformId, raw: string): boolean {
  try { const url = new URL(raw); return url.protocol === 'https:' && !url.username && !url.password && (!url.port || url.port === '443') && platformOf(platform).roots.some(root => url.hostname === root || url.hostname.endsWith('.' + root)) } catch { return false }
 }
+// Only the platform's authentication hosts need a separate login window.
+export function isAuthenticationUrl(platform:PlatformId,raw:string):boolean {
+ if(!isAllowedUrl(platform,raw))return false
+ const hosts:Record<PlatformId,string[]>={chaoxing:['passport2.chaoxing.com','passport.chaoxing.com'],icourse:['reg.163.com','urs.163.com','passport.163.com'],zhihuishu:['login.zhihuishu.com','passport.zhihuishu.com']}
+ const hostname=new URL(raw).hostname
+ return hosts[platform].some(host=>hostname===host||hostname.endsWith('.'+host))
+}
 export function safeUrl(raw: string): string {
  try { const url = new URL(raw); return url.protocol === 'https:' ? url.origin + '/[path-redacted]' : '[local-or-invalid-url]' } catch { return '[invalid-url]' }
 }

@@ -1,5 +1,22 @@
 import type { PlatformId } from '../../shared/contracts'
-import { courseIdentityUrl, isDirectoryCourse } from './security'
+import { courseIdentityUrl, isAllowedUrl, isDirectoryCourse } from './security'
+
+// Check identifiers after redirects, before binding a page or reading its chapters.
+// The observed Chaoxing routes use both courseId and courseid spellings.
+export function courseDestinationIssue(platform:PlatformId,source:string,target:string):string|null {
+ if(!isAllowedUrl(platform,target))return '课程跳转后的页面不在该平台允许的范围内。'
+ if(platform!=='chaoxing')return null
+ const expected=new URL(source),actual=new URL(target),directory=isDirectoryCourse(platform,source)
+ const values=(url:URL,key:string)=>[...url.searchParams.entries()].filter(([name])=>name.toLowerCase()===key).map(([,value])=>value)
+ if(directory&&(!courseIdentityUrl(platform,source)||isDirectoryCourse(platform,target)))return '课程入口尚未进入可核对的课程页面，请返回“我学的课”重试。'
+ for(const key of ['courseid','clazzid','cpi']){
+  const from=values(expected,key),to=values(actual,key)
+  if(from.length>1||to.length>1)return '课程跳转后的标识存在歧义，请返回“我学的课”重试。'
+  if(directory&&key==='courseid'&&(!to.length||!to[0]))return '课程跳转后无法核对目标课程，请返回“我学的课”重试。'
+  if(from.length&&to.length&&from[0]!==to[0])return '平台跳转到了另一门课程，已停止打开，请返回“我学的课”核对后重试。'
+ }
+ return null
+}
 
 // Only the observed legacy redirect from a freshly resolved v24 entry may be
 // retried over TLS. This is not an HTTP allowlist; the HTTP request stays blocked.

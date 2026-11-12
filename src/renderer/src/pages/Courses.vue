@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';import { RefreshCw, BookOpen, ArrowUpRight, 
 const store=useAppStore();const selectedAccount=ref(store.accounts[0]?.id??''),query=ref(''),selectedCourse=ref<Course|null>(null),chapters=ref<Chapter[]>([]),checked=ref<string[]>([])
 const filtered=computed(()=>store.courses.filter(c=>(!selectedAccount.value||c.accountId===selectedAccount.value)&&c.title.toLowerCase().includes(query.value.toLowerCase())))
 async function refresh(){if(!selectedAccount.value){store.error='请先选择一个账号。';return}const a=store.accounts.find(a=>a.id===selectedAccount.value)!;const result=await store.run<number>({type:'courses.refresh',accountId:a.id});if(result!==undefined)store.toast('已读取 '+result+' 门课程');else store.workbench(a.platform)}
-async function open(c:Course){store.workbench(c.platform);await store.run({type:'course.open',courseId:c.id})}
+async function open(c:Course){const result=await store.run({type:'course.open',courseId:c.id});if(result!==undefined)store.workbench(c.platform)}
 async function read(c:Course){
  // The main process opens a missing course and retains an already verified page.
  const list=await store.run<Chapter[]>({type:'course.chapters',courseId:c.id});if(list){chapters.value=list;checked.value=list.filter(x=>x.completion!=='complete').map(x=>x.id);selectedCourse.value=c}

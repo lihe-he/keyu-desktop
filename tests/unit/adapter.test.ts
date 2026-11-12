@@ -29,6 +29,10 @@ describe('signed course entry resolution',()=>{
   const a=new PlatformAdapter('chaoxing');vi.spyOn(a,'read').mockResolvedValue([page()]);const [course]=await a.courses(contents,makeAccount())
   vi.mocked(a.read).mockResolvedValue([page([identity+'&ckenc=synthetic-a',identity+'&ckenc=synthetic-b'])]);await expect(a.resolveCourseUrl(contents,course)).rejects.toThrow('当前账号')
  })
+ it('refuses a directory link that contains only the unsigned stored identity',async()=>{
+  const a=new PlatformAdapter('chaoxing');vi.spyOn(a,'read').mockResolvedValue([page()]);const [course]=await a.courses(contents,makeAccount())
+  vi.mocked(a.read).mockResolvedValue([page([identity])]);await expect(a.resolveCourseUrl(contents,course)).rejects.toThrow('当前账号')
+ })
 })
 
 describe('chapter identity and observation',()=>{
