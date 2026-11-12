@@ -1,0 +1,20 @@
+{
+  "kind": "offline-fixtures-NOT-install-or-platform-acceptance",
+  "at": "2026-11-12T07:23:46.280527+00:00",
+  "version": "0.1.5",
+  "passed": true,
+  "status": "complete",
+  "testsRun": 38,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "sourceHashes": {
+    "scripts/install-inputs.cjs": "b4e0e419e08652a7fee586cbd2f6c2fbf21814aff775a37deddab5803e066e3f",
+    "scripts/install-smoke.cjs": "1193869158dd62ecba59f12e5b1d4dfe5060359165d1ba56a27881d2fbc0e62b",
+    "scripts/source-bundle.py": "c6bf619115e659101e8b885b4352eb41f936b4e34b610f27bbb247b8f8a31da9",
+    "scripts/github-release.py": "8335ae61f9792ce86d9c6bb59038147ee5945218b22f4371710cbb15500f28c2",
+    "tests/release/test_github_release.py": "efc3da89e87d6f83abdc526f9e903d4deaf6ef0527fbcf43bd2c415073850a29",
+    "tests/release/test_installer_selection.py": "0e08caa65715efb38357507663b8cca1d70f3809cd4e981baea3e7020294e434",
+    "tests/release/test_source_bundle.py": "eed2f078c44f8943d9c5044f050d1768ee1da6d48ecd84b14ef0e50d0ac761b8"
+  }
+}

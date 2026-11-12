@@ -4,13 +4,11 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { spawn, execFileSync } = require('node:child_process');
 const assert = require('node:assert/strict');
-const crypto = require('node:crypto');
 const { verificationProfile } = require('./verification-profile.cjs');
+const { resolveInstallInputs, assertInstallerUnchanged } = require('./install-inputs.cjs');
 const profile = verificationProfile();
 const root = path.resolve(__dirname, '..');
 const version = require('../package.json').version;
-const installer = path.join(root, 'release', `CampusCourseDesktop-Setup-${version}-x64.exe`);
-const initialInstaller = process.argv[2] ? path.resolve(process.argv[2]) : installer;
 const target = path.join(root, '.test-data', 'install-' + Date.now());
 const exe = path.join(target, 'CampusCourseDesktop.exe');
 const report = { kind: 'developer-host-NOT-clean-Windows-acceptance', at: new Date().toISOString(), passed: false };
@@ -43,6 +41,10 @@ async function inApp(work) {
 }
 (async () => {
  assert.equal(process.platform, 'win32');
+ const inputs = await resolveInstallInputs({ root, version, argv: process.argv.slice(2) });
+ const installer = inputs.current.file, initialInstaller = inputs.initial.file;
+ report.installerPath = inputs.current.relative; report.installerSha256 = inputs.current.sha256;
+ report.initialInstallerPath = inputs.initial.relative; report.initialInstallerSha256 = inputs.initial.sha256;
  // NSIS can close same-named portable processes too. Never interrupt a student's
  // running window even when no installed version is registered.
  const running = Number(execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "@(Get-Process -Name CampusCourseDesktop -ErrorAction SilentlyContinue).Count"], { encoding: 'utf8', windowsHide: true }).trim());
@@ -50,19 +52,21 @@ async function inApp(work) {
  assert.equal(installations().length, 0, 'An existing installation was found; refusing to alter it.');
  assert.equal(await exists(target), false, 'Target must be new.');
  assert(path.relative(path.join(root, '.test-data'), target).startsWith('install-'));
- report.installerSha256 = crypto.createHash('sha256').update(await fs.readFile(installer)).digest('hex');
+ await assertInstallerUnchanged(inputs.initial);
  await run(initialInstaller, ['/S', '/D=' + target]);
  assert(await exists(exe), 'Installed executable missing');
  report.installed = true;
  let created, mute, dataFile;
  await inApp(async ({ app, command, snapshot }) => {
   const before = await snapshot(); mute = before.settings.muteAll; report.fromVersion = before.version;
+  assert.equal(before.version, inputs.initial.version, 'Installed starting version differs from its selected artifact.');
   assert.equal(before.fixtureMode, false);
   created = await command({ type: 'account.add', platform: 'chaoxing', label: '重装校验临时账号' });
   await command({ type: 'settings.update', settings: { muteAll: !mute } });
   const data = await app.evaluate(({ app }) => app.getPath('userData')); dataFile = path.join(data, 'campus.sqlite3');
  });
  report.installedLaunch = true;
+ await assertInstallerUnchanged(inputs.current);
  await run(installer, ['/S', '/D=' + target]);
  await inApp(async ({ command, snapshot }) => {
   const state = await snapshot();
@@ -72,6 +76,7 @@ async function inApp(work) {
  });
  report.crossVersionUpgradePreservesData = report.fromVersion !== report.toVersion;
  // A second run of the new installer also checks same-version reinstall.
+ await assertInstallerUnchanged(inputs.current);
  await run(installer, ['/S', '/D=' + target]);
  await inApp(async ({ command, snapshot }) => {
   const state = await snapshot(); assert(state.accounts.some(a => a.id === created.id)); assert.equal(state.settings.muteAll, !mute);
@@ -96,10 +101,11 @@ async function inApp(work) {
  assert.equal(await exists(exe), false, 'Uninstall did not remove test executable');
  assert.equal(installations().length, 0, 'Uninstall registration remains');
  assert(await exists(dataFile), 'Uninstall unexpectedly removed app data');
+ await assertInstallerUnchanged(inputs.current);
  report.uninstalled = true; report.uninstallPreservesData = true; report.isolatedVerification = true; report.passed = true;
  await fs.writeFile(path.join(root, 'reports/install-smoke.json'), JSON.stringify(report, null, 2));
  console.log('Install, installed launch, same-version reinstall and uninstall checks passed. Isolated data preserved. Cross-version upgrade tested: ' + report.crossVersionUpgradePreservesData);
 })().catch(async error => {
- report.error = String(error); await fs.writeFile(path.join(root, 'reports/install-smoke.json'), JSON.stringify(report, null, 2));
+ report.passed = false; report.error = String(error); await fs.writeFile(path.join(root, 'reports/install-smoke.json'), JSON.stringify(report, null, 2));
  console.error(error); process.exitCode = 1;
 });

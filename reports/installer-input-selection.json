@@ -1,0 +1,10 @@
+{
+  "kind": "read-only-candidate-selection-NOT-install-acceptance",
+  "passed": true,
+  "at": "2026-11-12T07:20:15.323Z",
+  "version": "0.1.5",
+  "currentInstaller": "release/candidate-0.1.5-r8/CampusCourseDesktop-Setup-0.1.5-x64.exe",
+  "currentSha256": "b32c3f9b31b6b9b1a5a88c87a4abf2d1a1b25711e8146c6ad6a36fc7d6ebc609",
+  "initialInstaller": "release/candidate-0.1.5-r8/CampusCourseDesktop-Setup-0.1.5-x64.exe",
+  "rootInstallerSelected": false
+}

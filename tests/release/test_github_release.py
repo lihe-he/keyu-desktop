@@ -45,6 +45,26 @@ class ReleaseValidation(unittest.TestCase):
         self.assertEqual(version, '0.1.2')
         self.assertEqual(len(files), 4)
 
+    def test_accepts_verified_candidate_directory_without_root_copy(self):
+        candidate = self.root / 'release/candidate-fixture'
+        candidate.mkdir()
+        for file in (self.root / 'release').iterdir():
+            if file.is_file():
+                (candidate / file.name).write_bytes(file.read_bytes())
+                file.unlink()
+        version, _, files = release.artifacts(candidate)
+        self.assertEqual(version, '0.1.2')
+        self.assertTrue(all(file.parent == candidate.resolve() for file in files))
+
+    def test_rejects_artifact_directory_outside_release_outputs(self):
+        with self.assertRaisesRegex(AssertionError, 'inside project'):
+            release.artifacts(self.root.parent)
+
+    def test_rejects_duplicate_artifact_entries(self):
+        self.entries.append(dict(self.entries[0])); self.save()
+        with self.assertRaises(AssertionError):
+            release.artifacts()
+
     def test_rejects_tampered_file(self):
         (self.root / 'release' / self.entries[0]['file']).write_bytes(b'changed')
         with self.assertRaises(AssertionError): release.artifacts()

@@ -86,24 +86,28 @@ class GitHub:
             raise RuntimeError(f'GitHub HTTP {error.code} during {method} {parsed.path}') from None
 
 
-def artifacts():
+def artifacts(directory=None):
     pkg = json.loads((ROOT / 'package.json').read_text(encoding='utf-8-sig'))
-    manifest = json.loads((ROOT / 'release/manifest.json').read_text(encoding='utf-8-sig'))
+    release_root = (ROOT / 'release').resolve()
+    directory = release_root if directory is None else (ROOT / directory).resolve()
+    assert directory == release_root or directory.is_relative_to(release_root), 'Artifact directory must be inside project release outputs.'
+    assert directory.is_dir(), 'Artifact directory is missing.'
+    manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8-sig'))
     assert manifest['version'] == pkg['version']
     assert manifest['status'] == 'development-preview-NOT-real-platform-accepted'
     assert manifest['buildIdentityVerified']
     assert manifest['realPlatformAcceptance'] == {p: 'unverified' for p in ('chaoxing', 'icourse', 'zhihuishu')}, 'Review publication wording before promoting compatibility.'
     allowed = {f'CampusCourseDesktop-Setup-{pkg["version"]}-x64.exe', f'CampusCourseDesktop-Source-{pkg["version"]}.zip'}
-    assert {entry['file'] for entry in manifest['artifacts']} == allowed
+    assert len(manifest['artifacts']) == len(allowed) and {entry['file'] for entry in manifest['artifacts']} == allowed
     files = []
     for entry in manifest['artifacts']:
-        file = ROOT / 'release' / entry['file']
+        file = directory / entry['file']
         assert file.is_file() and not file.is_symlink()
         assert file.stat().st_size == entry['bytes'] and sha256(file) == entry['sha256'], 'Artifact changed since verification.'
         files.append(file)
     sums = ''.join(f"{entry['sha256']}  {entry['file']}\n" for entry in manifest['artifacts'])
-    assert (ROOT / 'release/SHA256SUMS.txt').read_text(encoding='utf-8') == sums, 'Checksum list differs from manifest.'
-    files += [ROOT / 'release/SHA256SUMS.txt', ROOT / 'release/manifest.json']
+    assert (directory / 'SHA256SUMS.txt').read_text(encoding='utf-8') == sums, 'Checksum list differs from manifest.'
+    files += [directory / 'SHA256SUMS.txt', directory / 'manifest.json']
     for file in files:
         assert file.is_file() and not file.is_symlink()
     return pkg['version'], manifest, files
@@ -120,6 +124,7 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='Read-only repository access check (default).')
     mode.add_argument('--publish', action='store_true', help='Upload verified files and publish as prerelease.')
+    parser.add_argument('--artifacts-dir', type=Path, help='Verified delivery directory inside this project release outputs.')
     args = parser.parse_args()
     client = GitHub()
     repo = client.call('GET', f'/repos/{REPOSITORY}')
@@ -128,7 +133,7 @@ def main():
     print(json.dumps({'repository': repo['full_name'], 'visibility': repo['visibility'], 'defaultBranch': repo['default_branch'], 'canPush': True}))
     if not args.publish:
         return
-    version, manifest, files = artifacts()
+    version, manifest, files = artifacts(args.artifacts_dir)
     assert not git('status', '--porcelain'), 'Commit all intended changes and keep a clean worktree before publication.'
     tag = 'v' + version
     head = git('rev-parse', 'HEAD')

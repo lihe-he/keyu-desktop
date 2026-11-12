@@ -88,18 +88,17 @@ pnpm exec playwright test --project=desktop '--reporter=list,json'
 # 短时合成检查；如需两小时合成检查，先移除 CAMPUS_SOAK_MS
 $env:CAMPUS_SOAK_MS='120000'
 pnpm exec playwright test --project=soak --reporter=list
-pnpm exec electron-builder --win nsis --x64 --config.directories.output=release/build-0.1.5
-# 只复制新候选包；已有发布文件时禁止覆盖
-if (Test-Path release/CampusCourseDesktop-Setup-0.1.5-x64.exe) { throw '目标安装包已存在，请核对，不要覆盖已发布文件。' }
-Copy-Item release/build-0.1.5/CampusCourseDesktop-Setup-0.1.5-x64.exe release/
-node scripts/packaged-smoke.cjs release/build-0.1.5/win-unpacked/CampusCourseDesktop.exe
+$deliveryCandidate = 'release/candidate-0.1.5-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+if (Test-Path -LiteralPath $deliveryCandidate) { throw '候选目录已存在，请选择新的目录，不覆盖已有产物。' }
+pnpm exec electron-builder --win nsis --x64 --config.directories.output=$deliveryCandidate
+node scripts/packaged-smoke.cjs "$deliveryCandidate/win-unpacked/CampusCourseDesktop.exe"
 # 访问官方未登录入口，不自动登录；打包校验使用独立临时目录
-node scripts/public-entry-smoke.cjs release/build-0.1.5/win-unpacked/CampusCourseDesktop.exe
-node scripts/install-smoke.cjs
+node scripts/public-entry-smoke.cjs "$deliveryCandidate/win-unpacked/CampusCourseDesktop.exe"
+node scripts/verify-release.cjs "$deliveryCandidate/win-unpacked"
+if ($LASTEXITCODE -ne 0) { throw '交付一致性校验未通过，停止安装校验与发布。' }
+node scripts/install-smoke.cjs --installer "$deliveryCandidate/CampusCourseDesktop-Setup-0.1.5-x64.exe"
 # 任意校验失败时停止，不执行源码打包与发布
 if ($LASTEXITCODE -ne 0) { throw '安装校验未通过，停止发布。' }
-node scripts/verify-release.cjs release/build-0.1.5/win-unpacked
-if ($LASTEXITCODE -ne 0) { throw '交付一致性校验未通过，停止发布。' }
 python scripts/source-bundle.py
 ```
 
@@ -110,6 +109,12 @@ python scripts/source-bundle.py
 `reports/release-integrity.json` 记录依赖锁及程序文件摘要；它只证明构建文件一致，不证明真实平台或干净系统兼容。真实课程仍按兼容性报告人工验收。
 
 多个候选可以使用同一个开发版本号。`verify-release.cjs` 默认核对传入 `win-unpacked` 相邻的同版本安装包，也可以用第三个参数显式指定本项目 `release` 内的对应安装包；报告记录具体安装包路径和摘要，避免误取根目录的旧候选安装包。通过此核对仍不能替代安装器实际执行验收。
+
+`install-smoke.cjs` 默认使用当前一致性报告的 `installerPath` 与摘要，显式 `--installer` 也必须与已验证候选的字节一致。使用 `--upgrade-from` 指定本项目 `release` 内的 0.1.4 或更新安装包作为升级起点；原有单个位置参数仍表示升级起点。安装、重装和最终记录前重新检查当前安装包，已有应用或安装项仍会阻止执行。候选选择的离线测试只读取假文件，不安装应用。
+
+安装验收通过后，`source-bundle.py` 从同一份报告读取候选安装包，将源码 ZIP、manifest、SHA256SUMS 和交付说明生成在该候选安装包目录中；已有输出会拒绝覆盖。发布使用 `python scripts/github-release.py --publish --artifacts-dir <候选交付目录>`，例如 `release/candidate-0.1.5-r8`。根目录历史附件和校验清单无需复制或覆盖。
+
+2026-11-12 交付脚本补充检查通过 38 项离线回归；实际只读选择确认当前安装包为 r8，而非根目录的旧同版本候选。记录分别为 `reports/release-script-results.json` 和 `reports/installer-input-selection.json`，源码打包会一并保留已有记录。这些检查没有执行安装器，不改变 r8 的应用代码、真实课程或安装验收结论。
 
 ## 明确不做
 
@@ -125,7 +130,7 @@ python scripts/source-bundle.py
 
 后续版本保留版本记录、测试证据和完整锁文件，以普通提交和版本标签推送到本仓库；不强制推送、不覆盖已有版本附件。Windows 安装包与源码 ZIP 作为 GitHub Release 附件，不进入 Git 源码历史。预览版使用 prerelease 标识，不自动安装更新。
 
-发布前按开发说明完成校验，并执行 `python -B -m unittest discover -s tests/release -v` 检查上传文件与远端摘要校验边界。提交并推送后创建匹配 package.json 的 `v<版本号>` 标签。`python scripts/github-release.py --check` 只检查访问权限；`--publish` 要求干净工作区、远端标签对应当前提交、所有交付文件摘要匹配，先上传草稿并核验附件摘要，再发布预览版。凭据由 Git 凭据管理器提供，不写入源码、日志或发布文件。
+发布前按开发说明完成校验，并执行 `python -B -m unittest discover -s tests/release -v` 检查候选选择、源码输出、上传文件与远端摘要校验边界。提交并推送后创建匹配 package.json 的 `v<版本号>` 标签。`python scripts/github-release.py --check` 只检查访问权限；`--publish --artifacts-dir <候选交付目录>` 要求干净工作区、远端标签对应当前提交、所有交付文件摘要匹配，先上传草稿并核验附件摘要，再发布预览版。凭据由 Git 凭据管理器提供，不写入源码、日志或发布文件。
 
 ## 许可证
 
