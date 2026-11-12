@@ -113,3 +113,40 @@ describe('current chapter target validation',()=>{
   expect(operate).toHaveBeenCalledWith(contents,'click',inPage);expect(observation).toHaveBeenCalledTimes(1)
  })
 })
+
+describe('observation document ownership',()=>{
+ it.each(['different-page','same-url-reload','child-frame'] as const)('rejects a late player result after %s navigation',async navigation=>{
+  await runtime.open(task,chapter)
+  const contents=contentsFor(),oldObservation={taskId:task.id,accountId:account.id,chapterId:chapter.id,generation:task.generation,observedAt:1,state:'ended',currentTime:10,duration:10,completion:'complete',issue:null,url:chapterUrl} satisfies Observation
+  let completeRead!:(value:Observation)=>void
+  observation.mockReturnValueOnce(new Promise(resolve=>{completeRead=resolve}))
+  const result=resultOf(runtime.observe(task).then(()=>{}))
+  const destination=navigation==='different-page'?frameUrl:chapterUrl
+  contents.emit('did-start-navigation',{url:destination,isMainFrame:navigation!=='child-frame',isSameDocument:false},destination,false,navigation!=='child-frame')
+  if(navigation==='different-page'){contents.url=destination;contents.emit('did-navigate',{},destination)}
+  completeRead(oldObservation)
+  expect((await result)?.message).toContain('变化')
+ })
+
+ it('rejects a result from a task view that was closed while reading',async()=>{
+  await runtime.open(task,chapter)
+  let completeRead!:(value:Observation)=>void
+  observation.mockReturnValueOnce(new Promise(resolve=>{completeRead=resolve}))
+  const result=resultOf(runtime.observe(task).then(()=>{}))
+  runtime.close(task.platform,task.id)
+  completeRead({taskId:task.id,accountId:account.id,chapterId:chapter.id,generation:task.generation,observedAt:1,state:'ended',currentTime:10,duration:10,completion:'complete',issue:null,url:chapterUrl})
+  expect(await result).toBeInstanceOf(Error)
+ })
+
+ it('does not navigate with chapter evidence from before a same-address reload',async()=>{
+  let completeRead!:(value:PageProbe[])=>void
+  read.mockReturnValueOnce(new Promise(resolve=>{completeRead=resolve}))
+  const result=resultOf(runtime.open(task,chapter)),contents=contentsFor()
+  await flush()
+  contents.emit('did-start-navigation',{url:frameUrl,isMainFrame:true,isSameDocument:false},frameUrl,false,true)
+  completeRead([probe([freshChapter()])])
+  expect((await result)?.message).toContain('变化')
+  expect(contents.loadURL).toHaveBeenCalledTimes(1)
+  expect(operate).not.toHaveBeenCalled();expect(observation).not.toHaveBeenCalled()
+ })
+})

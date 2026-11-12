@@ -4,7 +4,10 @@ const store=useAppStore();const selectedAccount=ref(store.accounts[0]?.id??''),q
 const filtered=computed(()=>store.courses.filter(c=>(!selectedAccount.value||c.accountId===selectedAccount.value)&&c.title.toLowerCase().includes(query.value.toLowerCase())))
 async function refresh(){if(!selectedAccount.value){store.error='请先选择一个账号。';return}const a=store.accounts.find(a=>a.id===selectedAccount.value)!;const result=await store.run<number>({type:'courses.refresh',accountId:a.id});if(result!==undefined)store.toast('已读取 '+result+' 门课程');else store.workbench(a.platform)}
 async function open(c:Course){store.workbench(c.platform);await store.run({type:'course.open',courseId:c.id})}
-async function read(c:Course){const opened=await store.run({type:'course.open',courseId:c.id});if(opened===undefined)return;const list=await store.run<Chapter[]>({type:'course.chapters',courseId:c.id});if(list){chapters.value=list;checked.value=list.filter(x=>x.completion!=='complete').map(x=>x.id);selectedCourse.value=c}}
+async function read(c:Course){
+ // The main process opens a missing course and retains an already verified page.
+ const list=await store.run<Chapter[]>({type:'course.chapters',courseId:c.id});if(list){chapters.value=list;checked.value=list.filter(x=>x.completion!=='complete').map(x=>x.id);selectedCourse.value=c}
+}
 async function add(){if(!selectedCourse.value||!checked.value.length)return;const result=await store.run({type:'task.add',courseId:selectedCourse.value.id,chapterIds:checked.value},'已加入所属平台队列，前往任务中心开始');if(result!==undefined)selectedCourse.value=null}
 </script>
 <template><div class="page"><div class="page-heading"><div><p class="eyebrow">MY COURSES</p><h1>我的课程</h1><p class="subtitle">从已登录的个人课程页读取，不混入公开目录或演示课程。</p></div><button class="button primary" :disabled="!!store.busy||!store.accounts.length" @click="refresh"><RefreshCw :size="16" :class="{spin:!!store.busy}"/>刷新所选账号</button></div>

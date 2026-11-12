@@ -56,6 +56,11 @@ test('v24 signed directory import resolves the current entry without storing cre
  expect(course.completion).toBe('unknown')
  await command({type:'course.open',courseId:course.id})
  expect(await command({type:'course.chapters',courseId:course.id})).toHaveLength(2)
+ // The chapter button must read the bound page after the user opens the course.
+ await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'我的课程',exact:true}).click()
+ await page.getByRole('button',{name:'选择章节',exact:true}).click()
+ await expect(page.getByText('2 个已识别章节', {exact:true})).toBeVisible()
+ await page.getByRole('dialog').getByRole('button',{name:'取消',exact:true}).click()
  // Opening from a stale course detail must not try the unsigned stored identity.
  await expect(command({type:'course.open',courseId:course.id})).rejects.toThrow('当前账号')
  await command({type:'view.navigate',platform:'chaoxing',action:'home'})
@@ -103,6 +108,35 @@ test('three platform media flows, isolation, lifecycle and persisted storage',as
 async function prepare(platform:'chaoxing'|'icourse'|'zhihuishu'='chaoxing'){
  const a=await command({type:'account.add',platform,label:'恢复测试 '+platform});await command({type:'account.open',accountId:a.id});await command({type:'courses.refresh',accountId:a.id});const c=(await snapshot()).courses.find(c=>c.accountId===a.id)!;await command({type:'course.chapters',courseId:c.id});const t=await command({type:'task.add',courseId:c.id,chapterIds:[]});return {a,c,t}
 }
+test('same-address reload invalidates an in-flight native player read',async()=>{
+ const {a,t}=await prepare();await command({type:'queue.start',platform:'chaoxing'})
+ const sourceUrl=await app.evaluate(async(_e,ids)=>{
+  await new Promise<void>(resolve=>setImmediate(resolve))
+  const test=(globalThis as any).__campusTest,wc=test.runtime.contentsFor(ids.accountId),task=test.store.tasks().find((task:any)=>task.id===ids.taskId)
+  const original=wc.executeJavaScriptInIsolatedWorld.bind(wc)
+  test.delayedRead={captured:false,navigated:false};let intercepted=false
+  // Keep the real DOM result, delaying only its delivery to the main process.
+  wc.executeJavaScriptInIsolatedWorld=(world:number,scripts:any[])=>{
+   const result=original(world,scripts)
+   if(world===1001&&!intercepted&&scripts.some(script=>script.code.includes(',"read")'))){
+    intercepted=true
+    return result.then((value:unknown)=>{test.delayedRead.captured=true;return new Promise(resolve=>{test.delayedRead.release=()=>resolve(value)})})
+   }
+   return result
+  }
+  test.delayedRead.result=test.runtime.observe(task).then((value:unknown)=>({value}),(error:Error)=>({error:error.message}))
+  wc.once('did-start-navigation',()=>{test.delayedRead.navigated=true})
+  return wc.getURL()
+ },{accountId:a.id,taskId:t.id})
+ await expect.poll(()=>app.evaluate(()=>(globalThis as any).__campusTest.delayedRead.captured)).toBe(true)
+ await app.evaluate((_e,id)=>(globalThis as any).__campusTest.runtime.contentsFor(id).reload(),a.id)
+ await expect.poll(()=>app.evaluate(()=>(globalThis as any).__campusTest.delayedRead.navigated)).toBe(true)
+ const result=await app.evaluate(async()=>{const delayed=(globalThis as any).__campusTest.delayedRead;delayed.release();return delayed.result})
+ expect(result.error).toContain('变化');expect(result.value).toBeUndefined()
+ await expect.poll(()=>app.evaluate((_e,id)=>(globalThis as any).__campusTest.runtime.contentsFor(id).getURL(),a.id)).toBe(sourceUrl)
+ expect((await snapshot()).tasks.find(task=>task.id===t.id)?.chapterIndex).toBe(0)
+ await command({type:'task.cancel',taskId:t.id})
+})
 test('all six pages operate through the UI, with safe modals and native view lifecycle',async()=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));const nav=page.getByRole('navigation',{name:'主导航'});
  await nav.getByRole('button',{name:'账号管理',exact:true}).click();await page.getByTestId('add-account').click();await page.getByTestId('account-label').fill('我的测试账号');await page.getByRole('button',{name:'添加并打开登录'}).click();await expect(page.locator('h1')).toHaveText('学习工作台');await expect.poll(async()=>(await snapshot()).views.length).toBe(1)

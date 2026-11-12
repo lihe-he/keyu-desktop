@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { EventEmitter } from 'node:events'
 import type { WebContents } from 'electron'
 import type { Chapter, Task } from '../../src/shared/contracts'
 import { PlatformAdapter } from '../../src/main/adapters/adapter'
@@ -83,8 +84,59 @@ describe('chapter identity and observation',()=>{
  })
  it('validates a legacy probe payload without requiring the new target field',async()=>{
   const a=new PlatformAdapter('chaoxing'),legacy=probe();delete legacy.activeTarget
-  const frame={url:course.url,detached:false},wc={isDestroyed:()=>false,mainFrame:frame,executeJavaScriptInIsolatedWorld:vi.fn().mockResolvedValue(legacy)}
+  const frame={url:course.url,detached:false},wc=Object.assign(new EventEmitter(),{isDestroyed:()=>false,mainFrame:frame,executeJavaScriptInIsolatedWorld:vi.fn().mockResolvedValue(legacy)})
   Object.assign(frame,{framesInSubtree:[frame]})
   expect(await a.read(wc as unknown as WebContents)).toEqual([legacy])
+ })
+})
+
+describe('probe document lifetime',()=>{
+ it.each(['same-url-reload','child-navigation','in-page-navigation','frame-detached','render-exit','destroyed'] as const)('rejects old probes after %s and removes temporary listeners',async change=>{
+  const a=new PlatformAdapter('chaoxing'),payload=page(),frame={url:payload.url,detached:false}
+  Object.assign(frame,{framesInSubtree:[frame]})
+  let completeProbe!:(value:PageProbe)=>void
+  const wc=Object.assign(new EventEmitter(),{isDestroyed:()=>false,mainFrame:frame,executeJavaScriptInIsolatedWorld:vi.fn().mockReturnValue(new Promise(resolve=>{completeProbe=resolve}))})
+  const reading=a.read(wc as unknown as WebContents)
+  if(change==='frame-detached')frame.detached=true
+  else if(change==='render-exit')wc.emit('render-process-gone',{}, {reason:'crashed'})
+  else if(change==='destroyed')wc.emit('destroyed')
+  else if(change==='in-page-navigation')wc.emit('did-navigate-in-page',{},payload.url+'#next',true)
+  else wc.emit('did-start-navigation',{url:payload.url,isMainFrame:change!=='child-navigation',isSameDocument:false},payload.url,false,change!=='child-navigation')
+  completeProbe(payload)
+  await expect(reading).rejects.toThrow('变化')
+  for(const event of ['did-start-navigation','did-navigate-in-page','render-process-gone','destroyed'])expect(wc.listenerCount(event)).toBe(0)
+ })
+
+ it('removes lifetime listeners after a normal successful read',async()=>{
+  const a=new PlatformAdapter('chaoxing'),payload=page(),frame={url:payload.url,detached:false}
+  Object.assign(frame,{framesInSubtree:[frame]})
+  const wc=Object.assign(new EventEmitter(),{isDestroyed:()=>false,mainFrame:frame,executeJavaScriptInIsolatedWorld:vi.fn().mockResolvedValue(payload)})
+  expect(await a.read(wc as unknown as WebContents)).toEqual([payload])
+  for(const event of ['did-start-navigation','did-navigate-in-page','render-process-gone','destroyed'])expect(wc.listenerCount(event)).toBe(0)
+ })
+
+ it('removes lifetime listeners when no probe could be read',async()=>{
+  const a=new PlatformAdapter('chaoxing'),frame={url:page().url,detached:false}
+  Object.assign(frame,{framesInSubtree:[frame]})
+  const wc=Object.assign(new EventEmitter(),{isDestroyed:()=>false,mainFrame:frame,executeJavaScriptInIsolatedWorld:vi.fn().mockRejectedValue(new Error('synthetic unavailable frame'))})
+  await expect(a.read(wc as unknown as WebContents)).rejects.toThrow('无法读取')
+  for(const event of ['did-start-navigation','did-navigate-in-page','render-process-gone','destroyed'])expect(wc.listenerCount(event)).toBe(0)
+ })
+
+ it('does not return a completed player when an allowed child frame could not be read',async()=>{
+  const a=new PlatformAdapter('chaoxing'),payload={...page(),media:{state:'ended' as const,currentTime:10,duration:10,error:false}}
+  const child={url:'https://mooc1.chaoxing.com/player',detached:false,executeJavaScript:vi.fn().mockRejectedValue(new Error('synthetic unavailable child'))}
+  const frame={url:payload.url,detached:false,framesInSubtree:[] as unknown[]};frame.framesInSubtree=[frame,child]
+  const wc=Object.assign(new EventEmitter(),{isDestroyed:()=>false,mainFrame:frame,executeJavaScriptInIsolatedWorld:vi.fn().mockResolvedValue(payload)})
+  await expect(a.read(wc as unknown as WebContents)).rejects.toThrow('嵌套页面')
+  for(const event of ['did-start-navigation','did-navigate-in-page','render-process-gone','destroyed'])expect(wc.listenerCount(event)).toBe(0)
+ })
+
+ it('rejects an invalid child payload instead of ignoring its playback or challenge state',async()=>{
+  const a=new PlatformAdapter('chaoxing'),payload=page()
+  const child={url:'https://mooc1.chaoxing.com/player',detached:false,executeJavaScript:vi.fn().mockResolvedValue({media:{state:'unknown'}})}
+  const frame={url:payload.url,detached:false,framesInSubtree:[] as unknown[]};frame.framesInSubtree=[frame,child]
+  const wc=Object.assign(new EventEmitter(),{isDestroyed:()=>false,mainFrame:frame,executeJavaScriptInIsolatedWorld:vi.fn().mockResolvedValue(payload)})
+  await expect(a.read(wc as unknown as WebContents)).rejects.toThrow('嵌套页面')
  })
 })

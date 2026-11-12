@@ -14,10 +14,26 @@ export class PlatformAdapter {
  private frames(contents: WebContents): WebFrameMain[] { return contents.mainFrame.framesInSubtree.filter(f=>!f.detached&&isAllowedUrl(this.platform,f.url)).slice(0,20) }
  async read(contents: WebContents): Promise<PageProbe[]> {
   if(contents.isDestroyed())throw new Error('学习页面已关闭。')
-  const frames=this.frames(contents);if(!frames.length)throw new Error('当前页面不是已允许的平台页面。')
-  const output=await Promise.all(frames.map(async frame=>{
-   try {const code='('+probeDocument.toString()+')('+JSON.stringify(recipes[this.platform])+',"read")';const value=frame===contents.mainFrame?await within(contents.executeJavaScriptInIsolatedWorld(1001,[{code}])):await within(frame.executeJavaScript(code));return schema.parse(value) as PageProbe }catch{return null}
-  }));const probes=output.filter((p):p is PageProbe=>p!==null);if(!probes.length)throw new Error('无法读取课程页面，页面结构可能已变化。');return probes
+  const frames=this.frames(contents).map(frame=>({frame,url:frame.url}));if(!frames.length)throw new Error('当前页面不是已允许的平台页面。')
+  let changed=false
+  const invalidate=()=>{changed=true}
+  // Reloading the same URL still replaces a document. Do not combine results
+  // from before and after navigation, including changes inside an iframe.
+  contents.on('did-start-navigation',invalidate);contents.on('did-navigate-in-page',invalidate)
+  contents.on('render-process-gone',invalidate);contents.on('destroyed',invalidate)
+  try{
+   const output=await Promise.all(frames.map(async ({frame})=>{
+    try {const code='('+probeDocument.toString()+')('+JSON.stringify(recipes[this.platform])+',"read")';const value=frame===contents.mainFrame?await within(contents.executeJavaScriptInIsolatedWorld(1001,[{code}])):await within(frame.executeJavaScript(code));return schema.parse(value) as PageProbe }catch{return null}
+   }))
+   if(changed||contents.isDestroyed()||frames.some(({frame,url})=>frame.detached||frame.url!==url))throw new Error('课程页面在读取期间已变化，请重新核对后重试。')
+   const probes=output.filter((p):p is PageProbe=>p!==null);if(!probes.length)throw new Error('无法读取课程页面，页面结构可能已变化。')
+   // An unreadable frame may contain another player or a platform challenge.
+   if(probes.length!==frames.length)throw new Error('未能完整读取平台嵌套页面，请等待页面加载完成后重新核对。')
+   return probes
+  }finally{
+   contents.removeListener('did-start-navigation',invalidate);contents.removeListener('did-navigate-in-page',invalidate)
+   contents.removeListener('render-process-gone',invalidate);contents.removeListener('destroyed',invalidate)
+  }
  }
  async operate(contents: WebContents, operation: ProbeOperation, chapter?: Chapter): Promise<void> {
   let frames=this.frames(contents)

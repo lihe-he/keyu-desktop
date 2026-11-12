@@ -118,7 +118,7 @@ Start-Process -FilePath 'C:\KeyuAcceptance\Installed\CampusCourseDesktop.exe' -A
 构建完成后，显式指定本轮候选安装包和 `release` 内尚不存在的绝对目标目录，例如：
 
 ```powershell
-& 'D:\Projects\web项目\campus-course-desktop\scripts\prepare-acceptance-kit.ps1' -InstallerPath 'D:\Projects\web项目\campus-course-desktop\release\candidate-0.1.5-r5\CampusCourseDesktop-Setup-0.1.5-x64.exe' -OutputDirectory 'D:\Projects\web项目\campus-course-desktop\release\acceptance-0.1.5-r5'
+& 'D:\Projects\web项目\campus-course-desktop\scripts\prepare-acceptance-kit.ps1' -InstallerPath 'D:\Projects\web项目\campus-course-desktop\release\candidate-0.1.5-r7\CampusCourseDesktop-Setup-0.1.5-x64.exe' -OutputDirectory 'D:\Projects\web项目\campus-course-desktop\release\acceptance-0.1.5-r7'
 ```
 
 准备脚本仅复制明确传入的当前版本 x64 安装包、此说明，并写 SHA-256 清单与材料说明。路径须在本项目 `release` 内，拒绝已有目标、特殊设备名、符号链接和重解析点；不覆盖附件，不安装、卸载、启动 GUI、更改设置、读取账号数据或生成源码 ZIP / 标签 / Release。失败时不删除或搬移任何目录；核对后改用新的输出目录。

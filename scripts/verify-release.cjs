@@ -65,13 +65,18 @@ async function filesIn(directory) {
   const nativeFiles = (await filesIn(path.join(unpacked, 'resources', 'app.asar.unpacked'))).filter(file => file.endsWith(path.join('better-sqlite3', 'prebuilds', 'win32-x64.node')));
   assert(nativeFiles.length > 0, 'Unpacked SQLite native module missing');
   const installerFile = `CampusCourseDesktop-Setup-${pkg.version}-x64.exe`;
-  const installerBytes = await fs.readFile(path.join(root, 'release', installerFile));
+  // Select the installer beside this build; another candidate can share its version.
+  const installerPath = process.argv[3] ? path.resolve(process.argv[3]) : path.join(path.dirname(unpacked), installerFile);
+  const installerRelative = path.relative(path.join(root, 'release'), installerPath);
+  assert.equal(path.basename(installerPath), installerFile, 'Installer filename differs from the build version');
+  assert(installerRelative && !installerRelative.startsWith('..') && !path.isAbsolute(installerRelative), 'Installer must be inside project release outputs');
+  const installerBytes = await fs.readFile(installerPath);
   Object.assign(report, {
     passed: true, version: pkg.version, unpackedDirectory: path.relative(root, unpacked).split(path.sep).join('/'), lockDocuments: locks.length,
     lockSha256: hash(lockBytes), directDependencies, lockedPackageCount: Object.keys(application.packages).length,
     outputHashes, asarSha256: hash(await fs.readFile(asarFile)),
     nativeModules: await Promise.all(nativeFiles.map(async file => ({ file: path.relative(unpacked, file).split(path.sep).join('/'), sha256: hash(await fs.readFile(file)) }))),
-    installerFile, installerSha256: hash(installerBytes),
+    installerFile, installerPath: path.relative(root, installerPath).split(path.sep).join('/'), installerSha256: hash(installerBytes),
     note: 'Identity checks only; not a real-platform or clean-Windows compatibility result.'
   });
   await fs.writeFile(reportPath, JSON.stringify(report, null, 2));

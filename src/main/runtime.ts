@@ -6,7 +6,7 @@ import { isAllowedUrl, isDirectoryCourse, partitionFor, safeUrl } from './core/s
 import type { PlaybackRuntime } from './core/engine'
 import { PlatformAdapter } from './adapters/adapter'
 import { blockedNavigationMessage, pageLoadFailure, courseHttpsRetry, type NavigationStage } from './core/navigation'
-interface Entry { view: WebContentsView; accountId: string; platform: PlatformId; taskId: string|null; generation: number; mode:'browse'|'task'; visible:boolean; allowedToPlay:boolean; expectedUrl:string; navigationChanged:boolean; browsingCourseId?:string }
+interface Entry { view: WebContentsView; accountId: string; platform: PlatformId; taskId: string|null; generation: number; documentRevision:number; mode:'browse'|'task'; visible:boolean; allowedToPlay:boolean; expectedUrl:string; navigationChanged:boolean; browsingCourseId?:string }
 interface NavigationAttempt {entry:Entry;generation:number;controller:AbortController;source:string;loginPage:boolean;blocker?:string;secureRetry?:string}
 class NavigationTimeoutError extends Error {constructor(){super('平台页面加载超时，请检查网络或稍后重试。')}}
 export class BrowserRuntime implements PlaybackRuntime {
@@ -69,11 +69,11 @@ export class BrowserRuntime implements PlaybackRuntime {
   this.close(account.platform)
   for(const [id,popups] of this.popups)if(this.account(id).platform===account.platform){for(const popup of popups)popup.destroy();this.popups.delete(id)}
   const view=new WebContentsView({webPreferences:{session:this.getSession(account),preload:join(__dirname,'../preload/platform.js'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,backgroundThrottling:true,allowRunningInsecureContent:false}})
-  const entry:Entry={view,accountId:account.id,platform:account.platform,taskId:task?.id??null,generation:task?.generation??0,mode,visible:false,allowedToPlay:false,expectedUrl:'',navigationChanged:false}
+  const entry:Entry={view,accountId:account.id,platform:account.platform,taskId:task?.id??null,generation:task?.generation??0,documentRevision:0,mode,visible:false,allowedToPlay:false,expectedUrl:'',navigationChanged:false}
   this.entries.set(account.platform,entry);this.window.contentView.addChildView(view);view.setVisible(false);view.setBounds({x:0,y:0,width:1000,height:650});view.webContents.setAudioMuted(true);this.guard(view.webContents,account)
-  view.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame)=>{if(isMainFrame)entry.browsingCourseId=undefined})
+  view.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame)=>{entry.documentRevision++;if(isMainFrame)entry.browsingCourseId=undefined})
   view.webContents.on('did-navigate',(_event,url)=>{if(entry.mode==='task'&&entry.expectedUrl&&url!==entry.expectedUrl)entry.navigationChanged=true;this.changed()})
-  view.webContents.on('did-navigate-in-page',(_event,url,isMainFrame)=>{if(isMainFrame&&entry.mode==='task'&&entry.expectedUrl&&url!==entry.expectedUrl)entry.navigationChanged=true;this.changed()})
+  view.webContents.on('did-navigate-in-page',(_event,url,isMainFrame)=>{entry.documentRevision++;if(isMainFrame){entry.browsingCourseId=undefined;if(entry.mode==='task'&&entry.expectedUrl&&url!==entry.expectedUrl)entry.navigationChanged=true}this.changed()})
   view.webContents.on('render-process-gone',()=>{entry.allowedToPlay=false;this.warn('平台页面进程已退出，对应任务将在状态检查时暂停。');this.changed()})
   view.webContents.on('unresponsive',()=>this.warn('平台页面暂时无响应，任务将停止自动推进。'))
   this.changed();return entry
@@ -105,7 +105,7 @@ export class BrowserRuntime implements PlaybackRuntime {
    await Promise.race([contents.loadURL(url),cancelled,timedOut]);this.assertNavigation(attempt)
   }finally{if(timer)clearTimeout(timer);signal.removeEventListener('abort',abort)}
  }
- private async load(entry:Entry,url:string):Promise<void>{
+ private async load(entry:Entry,url:string):Promise<number>{
   if(!isAllowedUrl(entry.platform,url))throw new Error('课程地址不在该平台允许的范围内。')
   const contents=entry.view.webContents,issues=this.navigationIssues.get(contents)
   this.cancelNavigation(contents)
@@ -122,6 +122,7 @@ export class BrowserRuntime implements PlaybackRuntime {
     try{await this.loadNavigation(attempt,retry)}catch(error){this.assertNavigation(attempt);throw error instanceof NavigationTimeoutError?error:new Error(attempt.blocker??pageLoadFailure(error))}
    }
    this.assertNavigation(attempt)
+   return entry.documentRevision
   }finally{if(issues?.pending===attempt)issues.pending=undefined;this.releaseNavigation(attempt)}
  }
  async browse(account:Account,url=platformOf(account.platform).home):Promise<void>{
@@ -138,12 +139,13 @@ export class BrowserRuntime implements PlaybackRuntime {
  async browseCourse(account:Account,course:Course):Promise<void>{
   const current=this.entries.get(account.platform)
   if(current?.mode==='task')throw new Error('请先暂停该平台任务，再打开课程。')
-  const contents=this.contentsForOrCreate(account,course),entryBefore=this.entries.get(account.platform),sourceUrl=contents.getURL()
+  const contents=this.contentsForOrCreate(account,course),entry=this.entries.get(account.platform)!,sourceUrl=contents.getURL(),sourceRevision=entry.documentRevision
   const url=await this.adapter(account.platform).resolveCourseUrl(contents,course)
-  if(this.entries.get(account.platform)!==entryBefore||contents.isDestroyed()||contents.getURL()!==sourceUrl)throw new Error('账号页面已改变，请重试。')
-  await this.browse(account,url)
-  const entry=this.entries.get(account.platform)
-  if(entry?.accountId===account.id)entry.browsingCourseId=course.id
+  if(this.entries.get(account.platform)!==entry||contents.isDestroyed()||entry.documentRevision!==sourceRevision||contents.getURL()!==sourceUrl)throw new Error('账号页面已改变，请重试。')
+  entry.browsingCourseId=undefined
+  const loadedRevision=await this.load(entry,url)
+  if(this.entries.get(account.platform)!==entry||contents.isDestroyed()||entry.documentRevision!==loadedRevision)throw new Error('账号页面已改变，请重试。')
+  entry.browsingCourseId=course.id;this.changed()
  }
  private contentsForOrCreate(account:Account,course:Course):WebContents {
   const entry=this.entries.get(account.platform)
@@ -165,8 +167,9 @@ export class BrowserRuntime implements PlaybackRuntime {
   if(!hasTargetFrame)await this.load(entry,courseUrl)
   if(this.entries.get(task.platform)!==entry||entry.generation!==task.generation)return
   if(chapter.target){
-   const target=chapter.target,probes=await adapter.read(contents)
+   const target=chapter.target,readRevision=entry.documentRevision,probes=await adapter.read(contents)
    if(this.entries.get(task.platform)!==entry||entry.generation!==task.generation||contents.isDestroyed())return
+   if(entry.documentRevision!==readRevision)throw new Error('课程页面在读取期间已变化，请重新核对后重试。')
    const issue=probes.find(p=>p.issue)?.issue;if(issue)throw new Error(issue)
    // The current frame, control and destination must all identify one chapter;
    // a stable title or index does not authorize a cached URL after link drift.
@@ -203,7 +206,10 @@ export class BrowserRuntime implements PlaybackRuntime {
  }
  async observe(task:Task):Promise<Observation>{
   const e=this.forTask(task);if(e.navigationChanged)throw new Error('课程页面已被手动切换。')
-  return this.adapter(task.platform).observation(e.view.webContents,task)
+  const revision=e.documentRevision,result=await this.adapter(task.platform).observation(e.view.webContents,task)
+  if(this.entries.get(task.platform)!==e||e.view.webContents.isDestroyed()||e.generation!==task.generation)throw new Error('页面操作已取消。')
+  if(e.navigationChanged||e.documentRevision!==revision)throw new Error('课程页面在读取期间已变化，请重新核对后重试。')
+  return result
  }
  private forTask(task:Task):Entry{const e=this.entries.get(task.platform);if(!e||e.taskId!==task.id||e.view.webContents.isDestroyed())throw new Error('任务页面已经关闭。');return e}
  contentsFor(accountId:string):WebContents {const account=this.account(accountId);const e=this.entries.get(account.platform);if(!e||e.accountId!==accountId||e.view.webContents.isDestroyed())throw new Error('请先在学习工作台打开这个账号。');return e.view.webContents}

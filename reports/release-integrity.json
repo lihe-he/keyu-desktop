@@ -1,8 +1,8 @@
 {
   "passed": true,
-  "at": "2026-11-11T14:52:21.200Z",
+  "at": "2026-11-12T04:27:01.465Z",
   "version": "0.1.5",
-  "unpackedDirectory": "release/candidate-0.1.5-r5/win-unpacked",
+  "unpackedDirectory": "release/candidate-0.1.5-r7/win-unpacked",
   "lockDocuments": 2,
   "lockSha256": "830155579e55d9e0bcf32018c955bdecffc489075d8899382c121af4f4b63b84",
   "directDependencies": {
@@ -26,14 +26,14 @@
   },
   "lockedPackageCount": 438,
   "outputHashes": {
-    "out/main/index.js": "684c491ac9b6abeb6889c8b6769b4b1db9e28937c9049e78991c3a211a2c07f9",
+    "out/main/index.js": "18f9dc9d99bac2b145f058f4aec8a66fd2b2f4c9cf69b450128c154fcd300215",
     "out/preload/index.js": "57f2f6896e2811d91e6d2cdc041df4798f76b4f6d2598983efd26604d2d38df5",
     "out/preload/platform.js": "9023677da046a3b079f9c0e411b5b6939e9bbf73f3d55b08bc4c51c0aa68ecad",
-    "out/renderer/assets/index-BPfcGeAb.js": "2f218238353e15e7eef7292a85a469c8d3e2b15143ae774a25c34f2b58f5600a",
     "out/renderer/assets/index-C8k9Ntq9.css": "e30887d21c60c4510dba0f8f81806ccb3bfb3622224e15f74a03828e272e5279",
-    "out/renderer/index.html": "0c74a2847ab12b83999109309d9bf1d47d4459b78dc1ca2c3d8388d2beaba91f"
+    "out/renderer/assets/index-DBsBkDJN.js": "f9ca8d3444d10b0c503eca0941934c28164d21659268c17f0d6884bf7fa414d4",
+    "out/renderer/index.html": "c823c832657e06bbd8f6af1a37cfffa678921b41240ef22b2db564aca2702ebb"
   },
-  "asarSha256": "2dee8bac4f562c0bc7fd01d6ebfd75261a37a9798d7923e44662254abdbb71cc",
+  "asarSha256": "d33f35fafe9c94f131aa4334538c375dc6c4148abd4dad6379b2e069b7926116",
   "nativeModules": [
     {
       "file": "resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/win32-x64.node",
@@ -41,6 +41,7 @@
     }
   ],
   "installerFile": "CampusCourseDesktop-Setup-0.1.5-x64.exe",
-  "installerSha256": "6b81b9d24c5da0c4fefc9958dbdf7889e39a4e9a55b20243667c4955b4d53265",
+  "installerPath": "release/candidate-0.1.5-r7/CampusCourseDesktop-Setup-0.1.5-x64.exe",
+  "installerSha256": "7c3446db559d3085462cd909083e8590f8940ad83739c6b0994c502f8f3df322",
   "note": "Identity checks only; not a real-platform or clean-Windows compatibility result."
 }

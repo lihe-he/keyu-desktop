@@ -2,7 +2,8 @@ import { EventEmitter } from 'node:events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { session, WebContentsView, type BrowserWindow, type Session } from 'electron'
 import { BrowserRuntime } from '../../src/main/runtime'
-import type { Account } from '../../src/shared/contracts'
+import { PlatformAdapter } from '../../src/main/adapters/adapter'
+import type { Account, Course } from '../../src/shared/contracts'
 
 vi.mock('electron',()=>({BrowserWindow:vi.fn(),WebContentsView:vi.fn(),session:{fromPartition:vi.fn()}}))
 
@@ -45,7 +46,7 @@ beforeEach(()=>{
  const window={contentView:{addChildView:vi.fn(),removeChildView:vi.fn()}} as unknown as BrowserWindow
  warn=vi.fn<(message:string)=>void>();runtime=new BrowserRuntime(window,id=>accounts.find(a=>a.id===id)!,vi.fn(),warn)
 })
-afterEach(()=>{runtime.closeAll();vi.useRealTimers()})
+afterEach(()=>{runtime.closeAll();vi.restoreAllMocks();vi.useRealTimers()})
 
 describe('navigation ownership and bounded HTTPS recovery',()=>{
  it('stops its timed-out request so a late completion cannot replace the page',async()=>{
@@ -128,5 +129,36 @@ describe('navigation ownership and bounded HTTPS recovery',()=>{
   expect((await result)?.message).toContain('主页面 · 服务端重定向')
   expect(contents.loadURL).toHaveBeenCalledTimes(2);expect(contents.stop).not.toHaveBeenCalled()
   expect(JSON.stringify(warn.mock.calls)).not.toMatch(/synthetic-signature|synthetic-hop|ckenc/)
+ })
+})
+
+describe('course entry document ownership',()=>{
+ const course:Course={id:'synthetic-course',accountId:accounts[0].id,platform:'chaoxing',title:'合成课程入口',url:signedEntry.replace('&ckenc=synthetic-signature',''),updatedAt:0,completion:'unknown'}
+ it.each([true,false])('rejects an entry read before a reload in the %s main-frame flag',async isMainFrame=>{
+  const starting=runtime.browse(accounts[0],otherPage),contents=contentsFor();contents.finish(0);await starting
+  let completeEntry!:(value:string)=>void
+  vi.spyOn(PlatformAdapter.prototype,'resolveCourseUrl').mockReturnValueOnce(new Promise(resolve=>{completeEntry=resolve}))
+  const result=resultOf(runtime.browseCourse(accounts[0],course))
+  contents.emit('did-start-navigation',{url:otherPage,isMainFrame,isSameDocument:false},otherPage,false,isMainFrame)
+  completeEntry(signedEntry);await flush()
+  if(contents.loads.length>1)contents.finish(1)
+  expect((await result)?.message).toContain('改变')
+  expect(contents.loadURL).toHaveBeenCalledTimes(1);expect(runtime.courseIsOpen(accounts[0].id,course.id)).toBe(false)
+ })
+
+ it('accepts a current directory entry and records only its own completed course',async()=>{
+  const starting=runtime.browse(accounts[0],otherPage),contents=contentsFor();contents.finish(0);await starting
+  vi.spyOn(PlatformAdapter.prototype,'resolveCourseUrl').mockResolvedValueOnce(signedEntry)
+  const result=resultOf(runtime.browseCourse(accounts[0],course));await flush();contents.finish(1)
+  expect(await result).toBeNull();expect(runtime.courseIsOpen(accounts[0].id,course.id)).toBe(true)
+ })
+
+ it('releases the old course binding after the main page changes its route without reloading',async()=>{
+  const starting=runtime.browse(accounts[0],otherPage),contents=contentsFor();contents.finish(0);await starting
+  vi.spyOn(PlatformAdapter.prototype,'resolveCourseUrl').mockResolvedValueOnce(signedEntry)
+  const opening=resultOf(runtime.browseCourse(accounts[0],course));await flush();contents.finish(1);expect(await opening).toBeNull()
+  const anotherCourse=signedEntry.replace('courseId=101','courseId=102')
+  contents.url=anotherCourse;contents.emit('did-navigate-in-page',{},anotherCourse,true)
+  expect(runtime.courseIsOpen(accounts[0].id,course.id)).toBe(false)
  })
 })
