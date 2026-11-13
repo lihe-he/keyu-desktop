@@ -1,6 +1,19 @@
 {
   "kind": "developer-host-NOT-clean-Windows-acceptance",
-  "at": "2026-11-04T01:52:07.179Z",
-  "passed": false,
-  "error": "AssertionError [ERR_ASSERTION]: A course assistant is running. Exit it from the tray before installation verification; no process was stopped.\n\n5 !== 0\n"
+  "at": "2026-11-13T14:04:03.613Z",
+  "passed": true,
+  "installerPath": "release/candidate-0.1.5-r8/CampusCourseDesktop-Setup-0.1.5-x64.exe",
+  "installerSha256": "b32c3f9b31b6b9b1a5a88c87a4abf2d1a1b25711e8146c6ad6a36fc7d6ebc609",
+  "initialInstallerPath": "release/CampusCourseDesktop-Setup-0.1.4-x64.exe",
+  "initialInstallerSha256": "518cc9cfa5a432f90b70f63d9518e20690a88da67e0d83aa7d6f53ffc28ec926",
+  "installed": true,
+  "fromVersion": "0.1.4",
+  "installedLaunch": true,
+  "toVersion": "0.1.5",
+  "crossVersionUpgradePreservesData": true,
+  "sameVersionReinstallPreservesData": true,
+  "uninstallSettlementMs": 6823,
+  "uninstalled": true,
+  "uninstallPreservesData": true,
+  "isolatedVerification": true
 }
